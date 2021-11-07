@@ -85,5 +85,5 @@ _I have had some problems building packages with maturin directly in a conda env
 
 ### Additional TODOs
 
-[ ] Support for exception values
-[ ] Support for missing values in both the dependant and independent variables
+- [ ] Support for exception values
+- [ ] Support for missing values in both the dependant and independent variables
