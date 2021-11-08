@@ -2,6 +2,9 @@
 
 ## _Supervised discretization in Rust_
 
+[![PyPI version shields.io](https://img.shields.io/pypi/v/discrust.svg)](https://pypi.python.org/pypi/discrust/)
+
+
 The `discrust` package provides a supervised discretization algorithm. Under the hood it implements a decision tree, using information value to find the optimal splits, and provides several different methods to constrain the final discretization scheme.
 
 _The package draws heavily from the [ivpy](https://github.com/gravesee/ivpy) package, both in the algorithm and the parameter controls._
