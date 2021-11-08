@@ -39,7 +39,6 @@ The `fit` method can be called on data and accepts the following parameters.
 This method will return a list of the optimal split values for the feature given the constraints. After being fit the discretizer will have a `splits_` attribute with this list.
 
 ```python
-import pandas as pd
 import seaborn as sns
 
 df = sns.load_dataset("titanic")
