@@ -182,7 +182,7 @@ mod test {
         let x_ = vec![6.2375, 6.4375, 0.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958];
         let y_ = vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
-        let f = Feature::new(&x_, &y_, &w_);
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
         let mut n = Node::new(
             &f,
             Some(1.0),
@@ -205,6 +205,47 @@ mod test {
     }
 
     #[test]
+    fn test_find_best_split_w_excp() {
+        // Even with exception values the best split should be
+        // the same
+        let x_ = vec![
+            -1.0, -1.0, 6.2375, 6.4375, 0.0, 100.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958,
+        ];
+        let y_ = vec![0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
+        let w_ = vec![1.0; x_.len()];
+
+        let f = Feature::new(&x_, &y_, &w_, &vec![-1.0, 100.0]);
+        let mut n = Node::new(
+            &f,
+            Some(1.0),
+            None,
+            Some(0.0),
+            Some(1),
+            None,
+            None,
+            None,
+            None,
+        );
+        println!("{:?}", f.exceptions);
+        assert_eq!(n.find_best_split(&f).split.unwrap(), 6.2375);
+
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let mut n = Node::new(
+            &f,
+            Some(1.0),
+            None,
+            Some(0.0),
+            Some(1),
+            None,
+            None,
+            None,
+            None,
+        );
+        println!("{:?}", f.exceptions);
+        assert_ne!(n.find_best_split(&f).split.unwrap(), 6.2375);
+    }
+
+    #[test]
     fn test_file() {
         let mut fare: Vec<f64> = Vec::new();
         let mut survived: Vec<f64> = Vec::new();
@@ -216,7 +257,7 @@ mod test {
             survived.push(split[1]);
         }
         let w = vec![1.0; fare.len()];
-        let f = Feature::new(&fare, &survived, &w);
+        let f = Feature::new(&fare, &survived, &w, &Vec::new());
         let mut n = Node::new(
             &f,
             Some(1.0),

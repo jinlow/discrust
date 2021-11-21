@@ -31,7 +31,7 @@ pub struct Discretizer {
     pub mono: Option<i8>,
     root_node: NodePtr,
     pub splits_: Vec<f64>,
-    feature: Option<Feature>,
+    pub feature: Option<Feature>,
 }
 
 impl Discretizer {
@@ -58,10 +58,20 @@ impl Discretizer {
         }
     }
 
-    pub fn fit(&mut self, x: &[f64], y: &[f64], w: &[f64]) -> Vec<f64> {
+    pub fn fit(
+        &mut self,
+        x: &[f64],
+        y: &[f64],
+        w: &[f64],
+        exceptions: Option<Vec<f64>>,
+    ) -> Vec<f64> {
         // Reset the splits
         self.splits_ = Vec::new();
-        let feature = Feature::new(x, y, w);
+        let e = match exceptions {
+            Some(v) => v,
+            None => Vec::new(),
+        };
+        let feature = Feature::new(x, y, w, &e);
         let root_node = Node::new(
             &feature,
             Some(self.min_obs),
@@ -190,7 +200,7 @@ mod test {
         }
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), Some(1));
         let w_ = vec![1.0; fare.len()];
-        let splits = disc.fit(&fare, &survived, &w_);
+        let splits = disc.fit(&fare, &survived, &w_, None);
         assert_eq!(
             splits,
             vec![
@@ -223,7 +233,7 @@ mod test {
         }
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), Some(-1));
         let w_ = vec![1.0; fare.len()];
-        let splits = disc.fit(&fare, &survived, &w_);
+        let splits = disc.fit(&fare, &survived, &w_, None);
         assert_eq!(
             splits,
             vec![
@@ -256,7 +266,7 @@ mod test {
         }
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), None);
         let w_ = vec![1.0; fare.len()];
-        let splits = disc.fit(&fare, &survived, &w_);
+        let splits = disc.fit(&fare, &survived, &w_, None);
         assert_eq!(
             splits,
             vec![

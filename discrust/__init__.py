@@ -66,7 +66,11 @@ class Discretizer(RustDiscretizer):
         return x
 
     def fit(
-        self, x: ArrayLike, y: ArrayLike, sample_weight: Optional[ArrayLike] = None
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        sample_weight: Optional[ArrayLike] = None,
+        exception_values: Optional[ArrayLike] = None,
     ) -> List[float]:
         """Fit the discretizer.
 
@@ -85,7 +89,7 @@ class Discretizer(RustDiscretizer):
         if sample_weight is not None:
             sample_weight = self._convert_array(sample_weight)
 
-        return super().fit(x, y, sample_weight)
+        return super().fit(x, y, sample_weight, exception_values)
 
     def predict(self, x: ArrayLike) -> np.ndarray:
         """Convert provided variable to WOE given the predicted discretization

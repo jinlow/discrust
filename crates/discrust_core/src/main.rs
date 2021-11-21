@@ -13,7 +13,7 @@ fn main() {
     }
     let w_ = vec![1.0; fare.len()];
     let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), Some(1));
-    let splits = disc.fit(&fare, &survived, &w_);
+    let splits = disc.fit(&fare, &survived, &w_, None);
     println!("{:?}", splits);
     for i in 0..1 {
         println!("Val {}", i);

@@ -1,3 +1,5 @@
+use std::{cmp::Ordering, collections::HashMap};
+
 /// A Feature struct
 /// This struct houses all of the aggregate information
 /// for feature, and it's binary performance field.
@@ -11,6 +13,70 @@ pub struct Feature {
     totals_ct_: Vec<f64>,
     ones_dist_: Vec<f64>,
     zero_dist_: Vec<f64>,
+    pub exceptions: Exceptions,
+}
+
+#[derive(Debug)]
+pub struct Exceptions {
+    pub vals_: Vec<f64>,
+    pub ones_ct_: Vec<f64>,
+    pub zero_ct_: Vec<f64>,
+    pub totals_ct_: Vec<f64>,
+    pub iv_: Vec<f64>,
+    pub woe_: Vec<f64>,
+}
+
+impl Exceptions {
+    fn new(exceptions: &[f64]) -> Self {
+        let mut vals_ = exceptions.to_vec();
+        vals_.sort_by(|i, j| i.partial_cmp(j).unwrap_or(Ordering::Less));
+        vals_.dedup();
+        let vals_len = vals_.len();
+        Exceptions {
+            vals_,
+            ones_ct_: vec![0.0; vals_len],
+            zero_ct_: vec![0.0; vals_len],
+            totals_ct_: vec![0.0; vals_len],
+            iv_: vec![0.0; vals_len],
+            woe_: vec![0.0; vals_len],
+        }
+    }
+    // Get the index of an exception, if it's None
+    // we know the exception does not exist.
+    fn exception_idx(&self, v: &f64) -> Option<usize> {
+        self.vals_.iter().position(|x| x == v)
+    }
+
+    // Add the values to the appropriate location in the exception
+    // value vectors.
+    fn update_exceptions(&mut self, idx: usize, w: &f64, y: &f64) {
+        self.totals_ct_[idx] += w;
+        self.ones_ct_[idx] += w * y;
+        self.zero_ct_[idx] += w * ((y < &1.0) as i64 as f64);
+    }
+
+    fn calculate_iv_woe(&mut self, total_ones: f64, total_zero: f64) {
+        for i in 0..self.vals_.len() {
+            let ones_dist = self.ones_ct_[i] / total_ones;
+            let zero_dist = self.zero_ct_[i] / total_zero;
+            let woe = (ones_dist / zero_dist).ln();
+            let iv = (ones_dist - zero_dist) * woe;
+            self.woe_[i] = woe;
+            self.iv_[i] = iv;
+        }
+    }
+
+    pub fn to_hashmap(&self) -> HashMap<String, Vec<f64>> {
+        let mut hmp = HashMap::new();
+        // hmp.
+        hmp.insert("vals_".to_string(), self.vals_.to_vec());
+        hmp.insert("ones_ct_".to_string(), self.ones_ct_.to_vec());
+        hmp.insert("zero_ct_".to_string(), self.zero_ct_.to_vec());
+        hmp.insert("totals_ct_".to_string(), self.totals_ct_.to_vec());
+        hmp.insert("iv_".to_string(), self.iv_.to_vec());
+        hmp.insert("woe_".to_string(), self.woe_.to_vec());
+        hmp
+    }
 }
 
 impl Feature {
@@ -26,7 +92,10 @@ impl Feature {
     ///     and 0s (negative class).
     /// * `w` - A reference to a vector of weights. If the feature
     ///     should be unweighted, pass in a vector of 1s, `vec![1.0; y.len()]`.
-    pub fn new(x: &[f64], y: &[f64], w: &[f64]) -> Self {
+    pub fn new(x: &[f64], y: &[f64], w: &[f64], exceptions: &[f64]) -> Self {
+        // Make exception values.
+        let mut exceptions = Exceptions::new(exceptions);
+
         // Define all of the stats we will use
         let mut vals_ = Vec::new();
         let mut ones_ct_ = Vec::new();
@@ -60,7 +129,41 @@ impl Feature {
         // Now loop over the data collecting all relevant stats.
         // We grab the first item from the iterator, and start the sums
         // of all relevant fields.
-        let init_idx = sort_index.next().unwrap_or(0);
+        let mut init_idx = sort_index.next().unwrap_or(0);
+
+        // If this first value is an exception, we need to loop until
+        // we find a non-exception value. Or consume the data. In which
+        // case all values in the data are exceptions.
+        // If the first value is not an exception, we just leave the
+        // init index alone.
+        if let Some(idx) = exceptions.exception_idx(&x[init_idx]) {
+            exceptions.update_exceptions(idx, &w[init_idx], &y[init_idx]);
+            // Start searching through the vector to find the first non-exception
+            // value.
+            loop {
+                let i_op = sort_index.next();
+                if i_op.is_none() {
+                    break;
+                }
+                let i = i_op.unwrap();
+                match exceptions.exception_idx(&x[i]) {
+                    Some(idx) => {
+                        exceptions.update_exceptions(idx, &w[i], &y[i]);
+                    }
+                    // If we have reached a point in the loop where the value
+                    // is no longer an exception, update the init_idx
+                    // and then break out of the loop.
+                    None => {
+                        init_idx = i;
+                        break;
+                    }
+                };
+            }
+        };
+
+        // TODO: At this point we run the risk of actually having gone through
+        // all the values. Because of this, we need to add some check here
+        // incase we have totally consumed sort_index.
         let mut x_ = x[init_idx];
         vals_.push(x_);
         totals_ct_.push(w[init_idx]);
@@ -70,6 +173,13 @@ impl Feature {
 
         // This will start at the second element.
         for i in sort_index {
+            // If the value is equal to one of our exceptions update the exceptions
+            // and continue.
+            if let Some(idx) = exceptions.exception_idx(&x[i]) {
+                exceptions.update_exceptions(idx, &w[i], &y[i]);
+                continue;
+            }
+
             // if the value is greater than x_ we know we are at a new
             // value and can calculate the distributions, as well as increment
             // the totals_idx.
@@ -96,12 +206,16 @@ impl Feature {
         // Finally add the very last value to our distribution columns
         ones_dist_.push(ones_ct_[totals_idx] / total_ones);
         zero_dist_.push(zero_ct[totals_idx] / total_zero);
+
+        exceptions.calculate_iv_woe(total_ones, total_zero);
+
         Feature {
             vals_,
             ones_ct_,
             totals_ct_,
             ones_dist_,
             zero_dist_,
+            exceptions,
         }
     }
 
@@ -184,7 +298,7 @@ mod test {
         let x_ = vec![1.0, 1.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0];
         let y_ = vec![1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0];
         let w_ = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-        let _f = Feature::new(&x_, &y_, &w_);
+        let _f = Feature::new(&x_, &y_, &w_, &Vec::new());
         assert!(true);
     }
     #[test]
@@ -192,14 +306,14 @@ mod test {
         let x_ = vec![1.0, 1.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0];
         let y_ = vec![1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0];
         let w_ = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-        let f = Feature::new(&x_, &y_, &w_);
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
         assert_eq!(f.vals_, vec![1.0, 2.0, 3.0]);
         assert_eq!(f.totals_ct_, vec![2.0, 2.0, 4.0]);
 
         let x_ = vec![2.0, 2.0, 1.0, 1.0];
         let y_ = vec![1.0, 1.0, 1.0, 0.0];
         let w_ = vec![3.0, 3.0, 1.0, 1.0];
-        let f = Feature::new(&x_, &y_, &w_);
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
         assert_eq!(f.vals_, vec![1.0, 2.0]);
         assert_eq!(f.totals_ct_, vec![2.0, 6.0]);
         assert_eq!(f.ones_ct_, vec![1.0, 6.0]);
@@ -212,7 +326,7 @@ mod test {
         let x_ = vec![6.2375, 6.4375, 0.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958];
         let y_ = vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
-        let f = Feature::new(&x_, &y_, &w_);
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
         assert_eq!(
             f.split_iv_woe(5.0, 0, f.vals_.len()),
             (
@@ -235,7 +349,7 @@ mod test {
         let x_ = vec![6.2375, 6.4375, 0.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958];
         let y_ = vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
-        let f = Feature::new(&x_, &y_, &w_);
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
         assert_eq!(
             f.split_totals_ct_ones_ct(5.0, 0, f.vals_.len()),
             ((4.0, 2.0), (5.0, 3.0))
