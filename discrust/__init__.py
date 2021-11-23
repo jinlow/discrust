@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .discrust import Discretizer as RustDiscretizer
 import numpy as np
 import pandas as pd
@@ -66,8 +67,12 @@ class Discretizer(RustDiscretizer):
         return x
 
     def fit(
-        self, x: ArrayLike, y: ArrayLike, sample_weight: Optional[ArrayLike] = None
-    ) -> List[float]:
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+        sample_weight: Optional[ArrayLike] = None,
+        exception_values: Optional[List[float]] = None,
+    ) -> Discretizer:
         """Fit the discretizer.
 
         Args:
@@ -76,6 +81,10 @@ class Discretizer(RustDiscretizer):
             y (ArrayLike): An arraylike binary field.
             sample_weight (Optional[ArrayLike], optional): Optional sample weight column to be applied
                 to be used when calculating the optimal breaks. Defaults to None.
+            exception_values (Optional[List[float]], optional): Optional list specifying exception
+                values. These values are held out of the binning process, additionally, their
+                their respective weight of evidence, and summary information can be found in the
+                `exception_values_` attribute once the discretizer has been fit.
 
         Returns:
             List[float]: A list of the optimal split values for the feature.
@@ -85,7 +94,8 @@ class Discretizer(RustDiscretizer):
         if sample_weight is not None:
             sample_weight = self._convert_array(sample_weight)
 
-        return super().fit(x, y, sample_weight)
+        super().fit(x, y, sample_weight, exception_values)
+        return self
 
     def predict(self, x: ArrayLike) -> np.ndarray:
         """Convert provided variable to WOE given the predicted discretization
@@ -99,5 +109,4 @@ class Discretizer(RustDiscretizer):
                 scheme.
         """
         x = self._convert_array(x)
-        res = super().predict(x)
-        return np.array(res)
+        return super().predict(x)
