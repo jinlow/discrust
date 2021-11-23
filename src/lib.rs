@@ -1,6 +1,9 @@
 use discrust_core::Discretizer as CrateDiscretizer;
-use numpy::PyReadonlyArray1;
+use ndarray::Ix1;
+use numpy::{IntoPyArray, PyArray, PyReadonlyArray1};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::Python;
 use std::collections::HashMap;
 
 // We need to pass subclass here, so that we
@@ -28,8 +31,14 @@ impl Discretizer {
     }
 
     #[getter]
-    pub fn exceptions_(&self) -> PyResult<HashMap<String, Vec<f64>>> {
-        Ok(self.disc.feature.as_ref().unwrap().exceptions.to_hashmap())
+    pub fn exception_values_(&self) -> PyResult<HashMap<String, Vec<f64>>> {
+        Ok(self
+            .disc
+            .feature
+            .as_ref()
+            .unwrap()
+            .exception_values
+            .to_hashmap())
     }
 
     #[getter]
@@ -48,7 +57,7 @@ impl Discretizer {
         x: PyReadonlyArray1<f64>,
         y: PyReadonlyArray1<f64>,
         w: Option<PyReadonlyArray1<f64>>,
-        exceptions: Option<Vec<f64>>,
+        exception_values: Option<Vec<f64>>,
     ) -> PyResult<Vec<f64>> {
         let x = x.as_slice()?;
         let y = y.as_slice()?;
@@ -62,15 +71,27 @@ impl Discretizer {
                 Ok(v)
             }
         }?;
-        let splits = self.disc.fit(x, y, &w_, exceptions);
+        let splits = self.disc.fit(x, y, &w_, exception_values);
         self.splits_ = splits;
-        // self.exceptions = Some(self.disc.feature.as_ref().unwrap().exceptions);
+        // self.exception_values = Some(self.disc.feature.as_ref().unwrap().exception_values);
         Ok(self.splits_.to_vec())
     }
 
-    pub fn predict(&self, x: PyReadonlyArray1<f64>) -> PyResult<Vec<f64>> {
+    pub fn predict<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray1<f64>,
+    ) -> PyResult<&'py PyArray<f64, Ix1>> {
         let x = x.as_slice()?;
-        Ok(self.disc.predict(x)?)
+        // I didn't want the underlying discrust_core crate to depend on
+        // pyO3, so have to deal with the error custom here.
+        match self.disc.predict(x) {
+            Ok(v) => {
+                let arr = v.into_pyarray(py);
+                return Ok(arr);
+            }
+            Err(e) => return Err(PyValueError::new_err(e.to_string())),
+        };
     }
 }
 

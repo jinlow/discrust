@@ -226,7 +226,7 @@ mod test {
             None,
             None,
         );
-        println!("{:?}", f.exceptions);
+        println!("{:?}", f.exception_values);
         assert_eq!(n.find_best_split(&f).split.unwrap(), 6.2375);
 
         let f = Feature::new(&x_, &y_, &w_, &Vec::new());
@@ -241,7 +241,7 @@ mod test {
             None,
             None,
         );
-        println!("{:?}", f.exceptions);
+        println!("{:?}", f.exception_values);
         assert_ne!(n.find_best_split(&f).split.unwrap(), 6.2375);
     }
 

@@ -13,11 +13,11 @@ pub struct Feature {
     totals_ct_: Vec<f64>,
     ones_dist_: Vec<f64>,
     zero_dist_: Vec<f64>,
-    pub exceptions: Exceptions,
+    pub exception_values: ExceptionValues,
 }
 
 #[derive(Debug)]
-pub struct Exceptions {
+pub struct ExceptionValues {
     pub vals_: Vec<f64>,
     pub ones_ct_: Vec<f64>,
     pub zero_ct_: Vec<f64>,
@@ -26,13 +26,13 @@ pub struct Exceptions {
     pub woe_: Vec<f64>,
 }
 
-impl Exceptions {
-    fn new(exceptions: &[f64]) -> Self {
-        let mut vals_ = exceptions.to_vec();
+impl ExceptionValues {
+    fn new(exception_values: &[f64]) -> Self {
+        let mut vals_ = exception_values.to_vec();
         vals_.sort_by(|i, j| i.partial_cmp(j).unwrap_or(Ordering::Less));
         vals_.dedup();
         let vals_len = vals_.len();
-        Exceptions {
+        ExceptionValues {
             vals_,
             ones_ct_: vec![0.0; vals_len],
             zero_ct_: vec![0.0; vals_len],
@@ -43,13 +43,13 @@ impl Exceptions {
     }
     // Get the index of an exception, if it's None
     // we know the exception does not exist.
-    fn exception_idx(&self, v: &f64) -> Option<usize> {
+    pub fn exception_idx(&self, v: &f64) -> Option<usize> {
         self.vals_.iter().position(|x| x == v)
     }
 
     // Add the values to the appropriate location in the exception
     // value vectors.
-    fn update_exceptions(&mut self, idx: usize, w: &f64, y: &f64) {
+    fn update_exception_values(&mut self, idx: usize, w: &f64, y: &f64) {
         self.totals_ct_[idx] += w;
         self.ones_ct_[idx] += w * y;
         self.zero_ct_[idx] += w * ((y < &1.0) as i64 as f64);
@@ -92,9 +92,9 @@ impl Feature {
     ///     and 0s (negative class).
     /// * `w` - A reference to a vector of weights. If the feature
     ///     should be unweighted, pass in a vector of 1s, `vec![1.0; y.len()]`.
-    pub fn new(x: &[f64], y: &[f64], w: &[f64], exceptions: &[f64]) -> Self {
+    pub fn new(x: &[f64], y: &[f64], w: &[f64], exception_values: &[f64]) -> Self {
         // Make exception values.
-        let mut exceptions = Exceptions::new(exceptions);
+        let mut exception_values = ExceptionValues::new(exception_values);
 
         // Define all of the stats we will use
         let mut vals_ = Vec::new();
@@ -133,11 +133,11 @@ impl Feature {
 
         // If this first value is an exception, we need to loop until
         // we find a non-exception value. Or consume the data. In which
-        // case all values in the data are exceptions.
+        // case all values in the data are exception_values.
         // If the first value is not an exception, we just leave the
         // init index alone.
-        if let Some(idx) = exceptions.exception_idx(&x[init_idx]) {
-            exceptions.update_exceptions(idx, &w[init_idx], &y[init_idx]);
+        if let Some(idx) = exception_values.exception_idx(&x[init_idx]) {
+            exception_values.update_exception_values(idx, &w[init_idx], &y[init_idx]);
             // Start searching through the vector to find the first non-exception
             // value.
             loop {
@@ -146,9 +146,9 @@ impl Feature {
                     break;
                 }
                 let i = i_op.unwrap();
-                match exceptions.exception_idx(&x[i]) {
+                match exception_values.exception_idx(&x[i]) {
                     Some(idx) => {
-                        exceptions.update_exceptions(idx, &w[i], &y[i]);
+                        exception_values.update_exception_values(idx, &w[i], &y[i]);
                     }
                     // If we have reached a point in the loop where the value
                     // is no longer an exception, update the init_idx
@@ -173,10 +173,10 @@ impl Feature {
 
         // This will start at the second element.
         for i in sort_index {
-            // If the value is equal to one of our exceptions update the exceptions
+            // If the value is equal to one of our exception_values update the exception_values
             // and continue.
-            if let Some(idx) = exceptions.exception_idx(&x[i]) {
-                exceptions.update_exceptions(idx, &w[i], &y[i]);
+            if let Some(idx) = exception_values.exception_idx(&x[i]) {
+                exception_values.update_exception_values(idx, &w[i], &y[i]);
                 continue;
             }
 
@@ -207,7 +207,7 @@ impl Feature {
         ones_dist_.push(ones_ct_[totals_idx] / total_ones);
         zero_dist_.push(zero_ct[totals_idx] / total_zero);
 
-        exceptions.calculate_iv_woe(total_ones, total_zero);
+        exception_values.calculate_iv_woe(total_ones, total_zero);
 
         Feature {
             vals_,
@@ -215,7 +215,7 @@ impl Feature {
             totals_ct_,
             ones_dist_,
             zero_dist_,
-            exceptions,
+            exception_values,
         }
     }
 

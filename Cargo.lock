@@ -28,19 +28,17 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "discrust"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "discrust_core",
+ "ndarray",
  "numpy",
  "pyo3",
 ]
 
 [[package]]
 name = "discrust_core"
-version = "0.1.0"
-dependencies = [
- "pyo3",
-]
+version = "0.1.2"
 
 [[package]]
 name = "indoc"

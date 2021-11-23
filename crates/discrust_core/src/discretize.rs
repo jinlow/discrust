@@ -1,27 +1,7 @@
+use crate::errors::NotFittedError;
 use crate::feature::Feature;
 use crate::node::{Node, NodePtr};
-use pyo3::exceptions::PyValueError;
-use pyo3::PyErr;
 use std::collections::VecDeque;
-use std::fmt;
-
-impl std::convert::From<NotFittedError> for PyErr {
-    fn from(err: NotFittedError) -> PyErr {
-        PyValueError::new_err(err.to_string())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NotFittedError;
-
-impl fmt::Display for NotFittedError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Calling a method that requires object to be fit, when `fit` has not been called."
-        )
-    }
-}
 
 pub struct Discretizer {
     min_obs: f64,
@@ -63,11 +43,11 @@ impl Discretizer {
         x: &[f64],
         y: &[f64],
         w: &[f64],
-        exceptions: Option<Vec<f64>>,
+        exception_values: Option<Vec<f64>>,
     ) -> Vec<f64> {
         // Reset the splits
         self.splits_ = Vec::new();
-        let e = match exceptions {
+        let e = match exception_values {
             Some(v) => v,
             None => Vec::new(),
         };
@@ -162,8 +142,19 @@ impl Discretizer {
         Ok(res)
     }
 
+    fn predict_record_idx(&self, v: &f64) -> Result<f64, NotFittedError> {
+        Ok(0.0)
+    }
+
     fn predict_record(&self, v: &f64) -> Result<f64, NotFittedError> {
-        let mut node = self.root_node.as_ref().ok_or(NotFittedError)?;
+        // First we check if this is an exception value, to do this, we need
+        // to check if the value is present in the exception struct.
+        let feature = self.feature.as_ref().ok_or_else(|| NotFittedError)?;
+        let excp_idx = feature.exception_values.exception_idx(v);
+        if let Some(idx) = excp_idx {
+            return Ok(feature.exception_values.woe_[idx]);
+        }
+        let mut node = self.root_node.as_ref().ok_or_else(|| NotFittedError)?;
         let w: f64;
         loop {
             if node.is_terminal() {

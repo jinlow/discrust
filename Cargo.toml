@@ -1,6 +1,6 @@
 [package]
 name = "discrust"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2018"
 
 [lib]
@@ -11,8 +11,9 @@ crate-type = ["cdylib"]
 # members=["crates/*/"]
 
 [dependencies]
-discrust_core = {version="0.1.0", path="crates/discrust_core"}
+discrust_core = {version="0.1.2", path="crates/discrust_core"}
 numpy = "0.15"
+ndarray = "0.15.1"
 
 [dependencies.pyo3]
 version = "0.15"

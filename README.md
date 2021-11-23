@@ -4,7 +4,6 @@
 
 [![PyPI version shields.io](https://img.shields.io/pypi/v/discrust.svg)](https://pypi.python.org/pypi/discrust/)
 
-
 The `discrust` package provides a supervised discretization algorithm. Under the hood it implements a decision tree, using information value to find the optimal splits, and provides several different methods to constrain the final discretization scheme.
 
 _The package draws heavily from the [ivpy](https://github.com/gravesee/ivpy) package, both in the algorithm and the parameter controls._
@@ -35,8 +34,13 @@ The `fit` method can be called on data and accepts the following parameters.
 - `y` **_(ArrayLike)_**: An arraylike binary field.
 - `sample_weight` **_(Optional[ArrayLike], optional)_**: Optional sample weight array
   to be used when calculating the optimal breaks. Defaults to None.
+- `exception_values` **_(Optional[List[float]], optional)_**: Optional list specifying exception
+  values. These values are held out of the binning process, additionally, their
+  respective weight of evidence, and summary information can be found in the
+  `exception_values_` attribute once the discretizer has been fit.
 
-This method will return a list of the optimal split values for the feature given the constraints. After being fit the discretizer will have a `splits_` attribute with this list.
+This method will fit the decision tree and find the optimal split values for the feature given the constraints. After being fit the discretizer will have a `splits_` attribute with the optimal
+split values.
 
 ```python
 import seaborn as sns
@@ -47,6 +51,7 @@ from discrust import Discretizer
 
 ds = Discretizer(min_obs=5, max_bins=10, min_iv=0.001, min_pos=1.0, mono=None)
 ds.fit(df["fare"], df["survived"])
+ds.splits_
 # [-inf, 6.95, 7.125, 7.7292, 10.4625, 15.1, 50.4958, 52.0, 73.5, 79.65, inf]
 ```
 
@@ -87,5 +92,5 @@ _I have had some problems building packages with maturin directly in a conda env
 
 ### Additional TODOs
 
-- [ ] Support for exception values
+- [x] Support for exception values
 - [ ] Support for missing values in both the dependant and independent variables
