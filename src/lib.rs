@@ -72,8 +72,10 @@ impl Discretizer {
             }
         }?;
         let splits = self.disc.fit(x, y, &w_, exception_values);
-        self.splits_ = splits;
-        // self.exception_values = Some(self.disc.feature.as_ref().unwrap().exception_values);
+        match splits {
+            Ok(s) => self.splits_ = s,
+            Err(e) => return Err(PyValueError::new_err(e.to_string())),
+        }
         Ok(self.splits_.to_vec())
     }
 

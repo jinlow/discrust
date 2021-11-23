@@ -1,4 +1,4 @@
-use crate::errors::NotFittedError;
+use crate::errors::DiscrustError;
 use crate::feature::Feature;
 use crate::node::{Node, NodePtr};
 use std::collections::VecDeque;
@@ -44,14 +44,14 @@ impl Discretizer {
         y: &[f64],
         w: &[f64],
         exception_values: Option<Vec<f64>>,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, DiscrustError> {
         // Reset the splits
         self.splits_ = Vec::new();
         let e = match exception_values {
             Some(v) => v,
             None => Vec::new(),
         };
-        let feature = Feature::new(x, y, w, &e);
+        let feature = Feature::new(x, y, w, &e)?;
         let root_node = Node::new(
             &feature,
             Some(self.min_obs),
@@ -131,30 +131,39 @@ impl Discretizer {
         self.splits_.push(-f64::INFINITY);
         self.splits_.push(f64::INFINITY);
         self.splits_.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        self.splits_.to_vec()
+        Ok(self.splits_.to_vec())
     }
 
-    pub fn predict(&self, x: &[f64]) -> Result<Vec<f64>, NotFittedError> {
+    pub fn predict(&self, x: &[f64]) -> Result<Vec<f64>, DiscrustError> {
         let res: Vec<f64> = x
             .iter()
             .map(|v| self.predict_record(v))
-            .collect::<Result<Vec<f64>, NotFittedError>>()?;
+            .collect::<Result<Vec<f64>, DiscrustError>>()?;
         Ok(res)
     }
 
-    fn predict_record_idx(&self, v: &f64) -> Result<f64, NotFittedError> {
+    fn predict_record_idx(&self, v: &f64, all_splits: &[f64]) -> Result<f64, DiscrustError> {
         Ok(0.0)
     }
 
-    fn predict_record(&self, v: &f64) -> Result<f64, NotFittedError> {
+    fn predict_record(&self, v: &f64) -> Result<f64, DiscrustError> {
         // First we check if this is an exception value, to do this, we need
         // to check if the value is present in the exception struct.
-        let feature = self.feature.as_ref().ok_or_else(|| NotFittedError)?;
+        let feature = self
+            .feature
+            .as_ref()
+            .ok_or_else(|| DiscrustError::NotFitted)?;
         let excp_idx = feature.exception_values.exception_idx(v);
         if let Some(idx) = excp_idx {
+            if feature.exception_values.totals_ct_[idx] == 0.0 {
+                return Ok(0.0);
+            }
             return Ok(feature.exception_values.woe_[idx]);
         }
-        let mut node = self.root_node.as_ref().ok_or_else(|| NotFittedError)?;
+        let mut node = self
+            .root_node
+            .as_ref()
+            .ok_or_else(|| DiscrustError::NotFitted)?;
         let w: f64;
         loop {
             if node.is_terminal() {
@@ -258,6 +267,39 @@ mod test {
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), None);
         let w_ = vec![1.0; fare.len()];
         let splits = disc.fit(&fare, &survived, &w_, None);
+        assert_eq!(
+            splits,
+            vec![
+                -f64::INFINITY,
+                6.95,
+                7.125,
+                7.7292,
+                10.4625,
+                15.1,
+                50.4958,
+                52.0,
+                73.5,
+                79.65,
+                f64::INFINITY
+            ]
+        );
+        // println!("{:?}", disc.predict(&fare));
+    }
+
+    fn test_discretizer_mono_none_nan_excp() {
+        let mut fare: Vec<f64> = Vec::new();
+        let mut survived: Vec<f64> = Vec::new();
+        let file = fs::read_to_string("resources/data.csv")
+            .expect("Something went wrong reading the file");
+        for l in file.lines() {
+            let split: Vec<f64> = l.split(",").map(|x| x.parse::<f64>().unwrap()).collect();
+            fare.push(split[0]);
+            survived.push(split[1]);
+        }
+        let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), None);
+        let w_ = vec![1.0; fare.len()];
+        fare[10] = f64::NAN;
+        let splits = disc.fit(&fare, &survived, &w_, Some(vec![f64::NAN]));
         assert_eq!(
             splits,
             vec![

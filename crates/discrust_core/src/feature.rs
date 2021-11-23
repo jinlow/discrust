@@ -1,3 +1,4 @@
+use crate::{utils::nan_safe_compare, DiscrustError};
 use std::{cmp::Ordering, collections::HashMap};
 
 /// A Feature struct
@@ -29,7 +30,7 @@ pub struct ExceptionValues {
 impl ExceptionValues {
     fn new(exception_values: &[f64]) -> Self {
         let mut vals_ = exception_values.to_vec();
-        vals_.sort_by(|i, j| i.partial_cmp(j).unwrap_or(Ordering::Less));
+        vals_.sort_by(|i, j| nan_safe_compare(i, j));
         vals_.dedup();
         let vals_len = vals_.len();
         ExceptionValues {
@@ -43,8 +44,15 @@ impl ExceptionValues {
     }
     // Get the index of an exception, if it's None
     // we know the exception does not exist.
+    // This also works for Missing values.
+    // This NA can be passed as a possible exception.
     pub fn exception_idx(&self, v: &f64) -> Option<usize> {
-        self.vals_.iter().position(|x| x == v)
+        self.vals_
+            .iter()
+            .position(|x| match nan_safe_compare(x, v) {
+                Ordering::Equal => true,
+                _ => false,
+            })
     }
 
     // Add the values to the appropriate location in the exception
@@ -92,7 +100,12 @@ impl Feature {
     ///     and 0s (negative class).
     /// * `w` - A reference to a vector of weights. If the feature
     ///     should be unweighted, pass in a vector of 1s, `vec![1.0; y.len()]`.
-    pub fn new(x: &[f64], y: &[f64], w: &[f64], exception_values: &[f64]) -> Self {
+    pub fn new(
+        x: &[f64],
+        y: &[f64],
+        w: &[f64],
+        exception_values: &[f64],
+    ) -> Result<Self, DiscrustError> {
         // Make exception values.
         let mut exception_values = ExceptionValues::new(exception_values);
 
@@ -105,7 +118,7 @@ impl Feature {
         // First we will get the index needed to sort the vector x.
         let mut sort_tuples: Vec<(usize, &f64)> = x.iter().enumerate().collect();
         // Now sort these tuples by the float values of x.
-        sort_tuples.sort_by(|&a, &b| a.1.partial_cmp(b.1).unwrap());
+        sort_tuples.sort_by(|a, b| nan_safe_compare(a.1, b.1));
         // Now that we have the tuples sorted, we only need the index, we will loop over
         // the data again here, to retrieve the sort index.
         // Maybe if we need to speed things up again, we can consider skipping this part and
@@ -120,6 +133,15 @@ impl Feature {
         let mut total_ones = 0.0;
         let mut total_zero = 0.0;
         for (w_, y_) in w.iter().zip(y) {
+            // Confirm there are no NaN values in the y_ variable, or
+            // or the weight field.
+            if y_.is_nan() {
+                return Err(DiscrustError::ContainsNaN(String::from("y column")));
+            }
+            if w_.is_nan() {
+                return Err(DiscrustError::ContainsNaN(String::from("weight column")));
+            }
+
             total_ones += w_ * y_;
             // I am using greater than 0 here, because
             // floats only have partial equality.
@@ -130,6 +152,19 @@ impl Feature {
         // We grab the first item from the iterator, and start the sums
         // of all relevant fields.
         let mut init_idx = sort_index.next().unwrap_or(0);
+
+        // Check if NaN is in the vector, but not an exception.
+        // The NaN values will be at the beginning because it's sorted.
+        if x[init_idx].is_nan() {
+            match exception_values.exception_idx(&x[init_idx]) {
+                None => {
+                    return Err(DiscrustError::ContainsNaN(String::from(
+                        "x column, but NaN is not an exception value",
+                    )))
+                }
+                _ => (),
+            }
+        }
 
         // If this first value is an exception, we need to loop until
         // we find a non-exception value. Or consume the data. In which
@@ -209,14 +244,14 @@ impl Feature {
 
         exception_values.calculate_iv_woe(total_ones, total_zero);
 
-        Feature {
+        Ok(Feature {
             vals_,
             ones_ct_,
             totals_ct_,
             ones_dist_,
             zero_dist_,
             exception_values,
-        }
+        })
     }
 
     /// Split the feature and calculate information value

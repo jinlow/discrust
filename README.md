@@ -6,7 +6,10 @@
 
 The `discrust` package provides a supervised discretization algorithm. Under the hood it implements a decision tree, using information value to find the optimal splits, and provides several different methods to constrain the final discretization scheme.
 
-_The package draws heavily from the [ivpy](https://github.com/gravesee/ivpy) package, both in the algorithm and the parameter controls._
+_The package draws heavily from the [ivpy](https://github.com/gravesee/ivpy) package, both in the algorithm and the parameter controls. Why make another package? This package serves as a proof of
+concept of building a python package using Rust and pyo3. Additionally the goal is for this
+package to better align with the scikit-learn API, and possibly be used in other Rust based
+credit score building tools._
 
 ## Usage
 
@@ -39,6 +42,8 @@ The `fit` method can be called on data and accepts the following parameters.
   respective weight of evidence, and summary information can be found in the
   `exception_values_` attribute once the discretizer has been fit.
 
+A `np.nan` value may be present in the list of possible exception values. If there are `np.nan` values present in the `x` variable, and `np.nan` is not listed as a possible exception value, an error will be raised. Additionally, an error will be raised if `np.nan` is found to be in `y` or the `sample_weight` arrays.
+
 This method will fit the decision tree and find the optimal split values for the feature given the constraints. After being fit the discretizer will have a `splits_` attribute with the optimal
 split values.
 
@@ -55,9 +60,34 @@ ds.splits_
 # [-inf, 6.95, 7.125, 7.7292, 10.4625, 15.1, 50.4958, 52.0, 73.5, 79.65, inf]
 ```
 
+Here we show what the results are if exception values are also specified. These exception values will be held out when calculating the bins.
+
+```python
+ds = Discretizer(min_obs=5, max_bins=10, min_iv=0.001, min_pos=1.0, mono=None)
+ds.fit(df["age"], df["survived"], exception_values=[np.nan, 1.0])
+ds.exception_values_
+# {'vals_': [nan, 1.0],
+#  'totals_ct_': [177.0, 7.0],
+#  'iv_': [0.03054206173541801, 0.015253257689460616],
+#  'ones_ct_': [52.0, 5.0],
+#  'woe_': [-0.40378231427394834, 1.3895784363210804],
+#  'zero_ct_': [125.0, 2.0]}
+```
+
+The `exception_values_` dictionary has the following keys.
+
+- `vals_`: The exception values passed to the `Discretizer`.
+- `totals_ct_`: The total number of each respective exception value present in the `x` variable used for fitting.
+- `ones_ct_`: Total count of the positive class for each exception value.
+- `zero_ct_`: Total count of zeros for each respective value.
+- `woe_`: The weight of evidence for each respective exception value.
+- `iv_`: The information value for each respective exception value.
+
 The `predict` method can be called and will discretize the feature, and then perform weight of evidence substitution on each binned level. This method takes the following arguments.
 
 - `x` **_(ArrayLike)_**: An arraylike numeric field.
+
+For exception values found in `x`, the calculated weight of evidence for that exception value will be returned. If the exception value was never present in the `x` variable when the `Discretizer` was fit, then the returned weight of evidence will be zero for the exception value.
 
 ```python
 ds.predict(df["fare"])[0:5]
@@ -89,8 +119,3 @@ maturin build --release
 ```
 
 _I have had some problems building packages with maturin directly in a conda environment, this is actually a bug on anaconda's side that will hopefully be resolved. If this does give you any problems, it's usually easiest to build a wheel inside of a `venv` and then install the wheel._
-
-### Additional TODOs
-
-- [x] Support for exception values
-- [ ] Support for missing values in both the dependant and independent variables
