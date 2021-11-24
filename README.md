@@ -1,6 +1,6 @@
 # Discrust
 
-## _Supervised discretization in Rust_
+## _Supervised discretization with Rust_
 
 [![PyPI version shields.io](https://img.shields.io/pypi/v/discrust.svg)](https://pypi.python.org/pypi/discrust/)
 

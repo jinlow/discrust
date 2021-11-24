@@ -4,4 +4,15 @@ build-backend = "maturin"
 
 [project]
 name = "discrust"
+description = "Supervised discretization with Rust"
+license = {file = "LICENSE"}
+keywords = ["rust", "discretize", "scorecard"]
+authors = [
+  {email = "james.d.inlow@gmail.com"},
+  {name = "James Inlow"}
+]
+maintainers = [
+  {email = "james.d.inlow@gmail.com", name = "James Inlow"}
+]
+readme = "README.md"
 dependencies = ["numpy>=1.21", "pandas>=1.3"]
