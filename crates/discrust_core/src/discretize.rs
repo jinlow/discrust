@@ -1,6 +1,8 @@
 use crate::errors::DiscrustError;
 use crate::feature::Feature;
 use crate::node::{Node, NodePtr};
+use crate::utils::nan_safe_compare;
+use std::cmp::Ordering;
 use std::collections::VecDeque;
 
 pub struct Discretizer {
@@ -134,25 +136,60 @@ impl Discretizer {
         Ok(self.splits_.to_vec())
     }
 
-    pub fn predict(&self, x: &[f64]) -> Result<Vec<f64>, DiscrustError> {
-        let res: Vec<f64> = x
-            .iter()
-            .map(|v| self.predict_record(v))
-            .collect::<Result<Vec<f64>, DiscrustError>>()?;
-        Ok(res)
-    }
-
-    fn predict_record_idx(&self, v: &f64, all_splits: &[f64]) -> Result<f64, DiscrustError> {
-        Ok(0.0)
-    }
-
-    fn predict_record(&self, v: &f64) -> Result<f64, DiscrustError> {
+    pub fn predict_woe(&self, x: &[f64]) -> Result<Vec<f64>, DiscrustError> {
         // First we check if this is an exception value, to do this, we need
         // to check if the value is present in the exception struct.
         let feature = self
             .feature
             .as_ref()
             .ok_or_else(|| DiscrustError::NotFitted)?;
+        let res: Vec<f64> = x
+            .iter()
+            .map(|v| self.predict_record_woe(v, feature))
+            .collect::<Result<Vec<f64>, DiscrustError>>()?;
+        Ok(res)
+    }
+
+    pub fn predict_idx(&self, x: &[f64]) -> Result<Vec<i64>, DiscrustError> {
+        // We don't need the first, value, as this will be negative infinity.
+        let all_splits = &self.splits_.as_slice()[1..];
+        let feature = self
+            .feature
+            .as_ref()
+            .ok_or_else(|| DiscrustError::NotFitted)?;
+        let res: Vec<i64> = x
+            .iter()
+            .map(|v| self.predict_record_idx(v, all_splits, feature))
+            .collect::<Result<Vec<i64>, DiscrustError>>()?;
+        Ok(res)
+    }
+
+    fn predict_record_idx(
+        &self,
+        v: &f64,
+        all_splits: &[f64],
+        feature: &Feature,
+    ) -> Result<i64, DiscrustError> {
+        // If it's an exception value, we return the index negative value.
+        // We start this at -1. So we add 1, to the zero indexed result
+        // of the `exception_idx` function.
+        if let Some(i) = feature.exception_values.exception_idx(v) {
+            return Ok(((i + 1) as i64) * -1);
+        }
+        let idx = all_splits
+            .iter()
+            // If the value is less than, or equal to the bin edge, we are in that
+            // position bin.
+            .position(|x| match nan_safe_compare(x, v) {
+                Ordering::Greater => true,
+                Ordering::Equal => true,
+                _ => false,
+            })
+            .ok_or(DiscrustError::Prediction)?;
+        Ok(idx as i64)
+    }
+    // -1, 4, 10
+    fn predict_record_woe(&self, v: &f64, feature: &Feature) -> Result<f64, DiscrustError> {
         let excp_idx = feature.exception_values.exception_idx(v);
         if let Some(idx) = excp_idx {
             if feature.exception_values.totals_ct_[idx] == 0.0 {
@@ -200,7 +237,11 @@ mod test {
         }
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), Some(1));
         let w_ = vec![1.0; fare.len()];
-        let splits = disc.fit(&fare, &survived, &w_, None);
+        let splits = disc.fit(&fare, &survived, &w_, None).unwrap();
+
+        disc.predict_idx(&fare);
+        disc.predict_woe(&fare);
+
         assert_eq!(
             splits,
             vec![
@@ -217,6 +258,8 @@ mod test {
                 f64::INFINITY
             ]
         );
+
+        // Test predictions run without error.
         // println!("{:?}", disc.predict(&fare));
     }
 
@@ -233,7 +276,7 @@ mod test {
         }
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), Some(-1));
         let w_ = vec![1.0; fare.len()];
-        let splits = disc.fit(&fare, &survived, &w_, None);
+        let splits = disc.fit(&fare, &survived, &w_, None).unwrap();
         assert_eq!(
             splits,
             vec![
@@ -266,7 +309,7 @@ mod test {
         }
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), None);
         let w_ = vec![1.0; fare.len()];
-        let splits = disc.fit(&fare, &survived, &w_, None);
+        let splits = disc.fit(&fare, &survived, &w_, None).unwrap();
         assert_eq!(
             splits,
             vec![
@@ -299,7 +342,9 @@ mod test {
         let mut disc = Discretizer::new(Some(5.0), Some(10), Some(0.001), Some(1.0), None);
         let w_ = vec![1.0; fare.len()];
         fare[10] = f64::NAN;
-        let splits = disc.fit(&fare, &survived, &w_, Some(vec![f64::NAN]));
+        let splits = disc
+            .fit(&fare, &survived, &w_, Some(vec![f64::NAN]))
+            .unwrap();
         assert_eq!(
             splits,
             vec![

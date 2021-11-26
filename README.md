@@ -83,15 +83,70 @@ The `exception_values_` dictionary has the following keys.
 - `woe_`: The weight of evidence for each respective exception value.
 - `iv_`: The information value for each respective exception value.
 
-The `predict` method can be called and will discretize the feature, and then perform weight of evidence substitution on each binned level. This method takes the following arguments.
+The `predict` method can be called and will discretize the feature, and then perform either weight of evidence substitution on each binned level, or return the bin index. This method takes the following arguments.
 
 - `x` **_(ArrayLike)_**: An arraylike numeric field.
+- `prediction_type` **_(str, optional)_**: A string specifying which prediction
+  type should be returned. The string specified must be one of
+  "woe" or "index". Defaults to "woe".
 
-For exception values found in `x`, the calculated weight of evidence for that exception value will be returned. If the exception value was never present in the `x` variable when the `Discretizer` was fit, then the returned weight of evidence will be zero for the exception value.
+  - If "woe" is supplied, weight evidence subtitution will be performed for each value, and the
+    weight of evidence of the bin the value should fall in will be returned. For exception values found in `x`, the calculated weight of evidence for that exception value will be returned. If the exception value was never present in the `x` variable when the `Discretizer` was fit, then the returned weight of evidence will be zero for the exception value.
+  - If "index" is specified, each value will be converted to the
+    relevant bin index. These bins will be created from the `splits_`
+    attribute and will be zero indexed. Any exception values will be encoded
+    starting with -1 to -N, where N is the number of exception values present
+    in the `exception_values_` attribute. The order of the exception values
+    will be equivalent to the `vals_` key in this attribute.
 
 ```python
 ds.predict(df["fare"])[0:5]
 array([-0.84846814, 0.78344263, -0.787529, 0.78344263, -0.787529])
+```
+
+Specifying `prediction_type` to "index" will be equivalent to use the pandas `cut` method with the `splits_` on the `Discretizer` object used as the bins.
+
+```python
+import pandas as pd
+
+ds = Discretizer(min_obs=5, max_bins=5, min_iv=0.001, min_pos=1.0, mono=None)
+ds.fit(df["fare"], df["survived"])
+pd.cut(df["fare"], bins=ds.splits_).value_counts().sort_index()
+# (-inf, 6.95]        26
+# (6.95, 7.125]       16
+# (7.125, 10.462]    297
+# (10.462, 73.5]     455
+# (73.5, inf]         97
+# Name: fare, dtype: int64
+
+pd.value_counts(ds.predict(df["fare"], prediction_type="index")).sort_index()
+# 0     26
+# 1     16
+# 2    297
+# 3    455
+# 4     97
+# dtype: int64
+```
+
+On of the main benefit of using the `predict` method over the pandas cut function directly, is the built in support for exception values.
+
+```python
+ds = Discretizer(min_obs=5, max_bins=4, min_iv=0.001, min_pos=1.0, mono=None)
+ds.fit(df["age"], df["survived"], exception_values=[np.nan, 1.0])
+
+pd.value_counts(ds.predict(df["age"], prediction_type="index")).sort_index()
+# -2      7
+# -1    177
+#  0      6
+#  1     34
+#  2    654
+#  3     13
+# dtype: int64
+
+ds.exception_values_["vals_"]
+# [nan, 1.0]
+ds.exception_values_["totals_ct_"]
+# [177.0, 7.0]
 ```
 
 ## Installation

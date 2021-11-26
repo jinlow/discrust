@@ -97,16 +97,40 @@ class Discretizer(RustDiscretizer):
         super().fit(x, y, sample_weight, exception_values)
         return self
 
-    def predict(self, x: ArrayLike) -> np.ndarray:
+    def predict(self, x: ArrayLike, prediction_type: str = "woe") -> np.ndarray:
         """Convert provided variable to WOE given the predicted discretization
         scheme.
 
         Args:
             x (ArrayLike): An arraylike numeric field.
+            prediction_type (str, optional): A string specifying which prediction
+                type should be returned. The string specified must be one of
+                "woe" or "index". Defaults to "woe".
+
+                * If "woe" is supplied, weight of evidence substitution will
+                be returned for each value. Exception values will use the
+                calculated weight of evidence value, if any were present in
+                the variable when it was fit. If none were present, a value of
+                0.0 will be returned for the weight of evidence.
+                * If "index" is specified, each value will be converted to the
+                relevant bin value, These bins will be created from the `splits_`
+                attribute and will zero indexed. Any exception values will be encoded
+                starting with -1 to -N, where N is the number of exception values present
+                in the `exception_values_` attribute. The order of the exception values
+                will be equivalent to the `vals_` key in this attribute.
         Returns:
             np.ndarray: The x variable where each level is transformed to
                 it's respective weight of evidence given the fitted binning
                 scheme.
         """
         x = self._convert_array(x)
-        return super().predict(x)
+        if prediction_type == "woe":
+            return super().predict_woe(x)
+        if prediction_type == "index":
+            return super().predict_idx(x)
+        else:
+            e_msg = (
+                "The parameter `prediction_type` must be one of 'index' or 'woe', "
+                + f"but {prediction_type} was passed."
+            )
+            raise ValueError(e_msg)

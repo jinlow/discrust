@@ -1,6 +1,7 @@
 use discrust_core::Discretizer as CrateDiscretizer;
-use ndarray::Ix1;
-use numpy::{IntoPyArray, PyArray, PyReadonlyArray1};
+use discrust_core::DiscrustError;
+use numpy::Element;
+use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::Python;
@@ -13,6 +14,14 @@ struct Discretizer {
     disc: CrateDiscretizer,
     pub splits_: Vec<f64>,
 }
+
+// impl<T: Element> IntoPyArray for Vec<T> {
+//     type Item = T;
+//     type Dim = Ix1;
+//     fn into_pyarray<'py>(&self, py: Python<'py>) -> &'py PyArray<T, Ix1> {
+//         self.into_boxed_slice().into_pyarray(py)
+//     }
+// }
 
 #[pymethods]
 impl Discretizer {
@@ -79,21 +88,22 @@ impl Discretizer {
         Ok(self.splits_.to_vec())
     }
 
-    pub fn predict<'py>(
+    pub fn predict_woe<'py>(
         &self,
         py: Python<'py>,
         x: PyReadonlyArray1<f64>,
-    ) -> PyResult<&'py PyArray<f64, Ix1>> {
+    ) -> PyResult<&'py PyArray1<f64>> {
         let x = x.as_slice()?;
-        // I didn't want the underlying discrust_core crate to depend on
-        // pyO3, so have to deal with the error custom here.
-        match self.disc.predict(x) {
-            Ok(v) => {
-                let arr = v.into_pyarray(py);
-                return Ok(arr);
-            }
-            Err(e) => return Err(PyValueError::new_err(e.to_string())),
-        };
+        pyarray_or_value_error(py, self.disc.predict_woe(x))
+    }
+
+    pub fn predict_idx<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray1<f64>,
+    ) -> PyResult<&'py PyArray1<i64>> {
+        let x = x.as_slice()?;
+        pyarray_or_value_error(py, self.disc.predict_idx(x))
     }
 }
 
@@ -101,4 +111,19 @@ impl Discretizer {
 fn discrust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Discretizer>()?;
     Ok(())
+}
+
+fn pyarray_or_value_error<'py, T: Element>(
+    py: Python<'py>,
+    preds: Result<Vec<T>, DiscrustError>,
+) -> PyResult<&'py PyArray1<T>> {
+    // I didn't want the underlying discrust_core crate to depend on
+    // pyO3, so have to deal with the error custom here.
+    match preds {
+        Ok(v) => {
+            let arr = v.into_pyarray(py);
+            return Ok(arr);
+        }
+        Err(e) => return Err(PyValueError::new_err(e.to_string())),
+    };
 }
