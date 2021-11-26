@@ -182,7 +182,7 @@ mod test {
         let x_ = vec![6.2375, 6.4375, 0.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958];
         let y_ = vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
-        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         let mut n = Node::new(
             &f,
             Some(1.0),
@@ -214,7 +214,7 @@ mod test {
         let y_ = vec![0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
 
-        let f = Feature::new(&x_, &y_, &w_, &vec![-1.0, 100.0]);
+        let f = Feature::new(&x_, &y_, &w_, &vec![-1.0, 100.0]).unwrap();
         let mut n = Node::new(
             &f,
             Some(1.0),
@@ -229,7 +229,7 @@ mod test {
         println!("{:?}", f.exception_values);
         assert_eq!(n.find_best_split(&f).split.unwrap(), 6.2375);
 
-        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         let mut n = Node::new(
             &f,
             Some(1.0),
@@ -257,7 +257,7 @@ mod test {
             survived.push(split[1]);
         }
         let w = vec![1.0; fare.len()];
-        let f = Feature::new(&fare, &survived, &w, &Vec::new());
+        let f = Feature::new(&fare, &survived, &w, &Vec::new()).unwrap();
         let mut n = Node::new(
             &f,
             Some(1.0),

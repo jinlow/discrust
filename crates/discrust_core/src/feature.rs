@@ -341,14 +341,14 @@ mod test {
         let x_ = vec![1.0, 1.0, 3.0, 2.0, 2.0, 3.0, 3.0, 3.0];
         let y_ = vec![1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0];
         let w_ = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(f.vals_, vec![1.0, 2.0, 3.0]);
         assert_eq!(f.totals_ct_, vec![2.0, 2.0, 4.0]);
 
         let x_ = vec![2.0, 2.0, 1.0, 1.0];
         let y_ = vec![1.0, 1.0, 1.0, 0.0];
         let w_ = vec![3.0, 3.0, 1.0, 1.0];
-        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(f.vals_, vec![1.0, 2.0]);
         assert_eq!(f.totals_ct_, vec![2.0, 6.0]);
         assert_eq!(f.ones_ct_, vec![1.0, 6.0]);
@@ -361,7 +361,7 @@ mod test {
         let x_ = vec![6.2375, 6.4375, 0.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958];
         let y_ = vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
-        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(
             f.split_iv_woe(5.0, 0, f.vals_.len()),
             (
@@ -384,7 +384,7 @@ mod test {
         let x_ = vec![6.2375, 6.4375, 0.0, 0.0, 4.0125, 5.0, 6.45, 6.4958, 6.4958];
         let y_ = vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0];
         let w_ = vec![1.0; x_.len()];
-        let f = Feature::new(&x_, &y_, &w_, &Vec::new());
+        let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(
             f.split_totals_ct_ones_ct(5.0, 0, f.vals_.len()),
             ((4.0, 2.0), (5.0, 3.0))

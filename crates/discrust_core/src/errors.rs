@@ -6,6 +6,8 @@ pub enum DiscrustError {
     NotFitted,
     #[error("NaN found in {0}.")]
     ContainsNaN(String),
+    #[error("Unable to calculate prediction.")]
+    Prediction,
 }
 
 // Error for when something is called on the discretizer when it
