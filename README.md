@@ -93,7 +93,7 @@ The `predict` method can be called and will discretize the feature, and then per
   - If "woe" is supplied, weight evidence subtitution will be performed for each value, and the
     weight of evidence of the bin the value should fall in will be returned. For exception values found in `x`, the calculated weight of evidence for that exception value will be returned. If the exception value was never present in the `x` variable when the `Discretizer` was fit, then the returned weight of evidence will be zero for the exception value.
   - If "index" is specified, each value will be converted to the
-    relevant bin value, These bins will be created from the `splits_`
+    relevant bin index. These bins will be created from the `splits_`
     attribute and will be zero indexed. Any exception values will be encoded
     starting with -1 to -N, where N is the number of exception values present
     in the `exception_values_` attribute. The order of the exception values
@@ -128,7 +128,7 @@ pd.value_counts(ds.predict(df["fare"], prediction_type="index")).sort_index()
 # dtype: int64
 ```
 
-The benefit of using the `predict` method over the pandas cut function directly, is the built in support for exception values.
+On of the main benefit of using the `predict` method over the pandas cut function directly, is the built in support for exception values.
 
 ```python
 ds = Discretizer(min_obs=5, max_bins=4, min_iv=0.001, min_pos=1.0, mono=None)
