@@ -128,7 +128,7 @@ pd.value_counts(ds.predict(df["fare"], prediction_type="index")).sort_index()
 # dtype: int64
 ```
 
-On of the main benefit of using the `predict` method over the pandas cut function directly, is the built in support for exception values.
+One of the main benefits of using the `predict` method over the pandas cut function directly, is the built in support for exception values.
 
 ```python
 ds = Discretizer(min_obs=5, max_bins=4, min_iv=0.001, min_pos=1.0, mono=None)
