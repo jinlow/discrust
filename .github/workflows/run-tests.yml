@@ -1,0 +1,19 @@
+name: Running Tests
+
+on: [push]
+
+jobs:
+  running-tests:
+    # strategy:
+    #   matrix:
+    #     pyversion: ["3.8", "3.9"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latests stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Run cargo test on discrust_core
+        run: cargo test -p discrust_core
