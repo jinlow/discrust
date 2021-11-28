@@ -29,11 +29,11 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish
-          -u $PYPI_USERNAME
-          -p $PYPI_PASSWORD
-          -i python
-          --skip-existing
+        run: maturin publish \
+          -u $PYPI_USERNAME \
+          -p $PYPI_PASSWORD \
+          -i python \
+          --skip-existing \
           --repository-url https://test.pypi.org/simple/
       # - name: Check deployment
       #   run: pip install --index-url discrust
@@ -64,51 +64,59 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish
-          -u $PYPI_USERNAME
-          -p $PYPI_PASSWORD
-          -i python${{ matrix.pyversion }}
-          --skip-existing
+        run: maturin publish \
+          -u $PYPI_USERNAME \
+          -p $PYPI_PASSWORD \
+          -i python${{ matrix.pyversion }} \
+          --skip-existing \
           --repository-url https://test.pypi.org/simple/
 
-      # - name: Check deployment
-      #   run: pip install --index-url discrust
-      # - run: pip install pytest
-      # - name: Run tests
-      #   run:
-      #     pytest tests
-
-      # -t x86_64
   deploy-manylinux:
     strategy:
       matrix:
         pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
-        target: [x86_64, i686]
     runs-on: ubuntu-latest
-    steps:
+    stepts:
       - uses: actions/checkout@v2
-      - name: Install latests stable Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Install python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.pyversion }}
-      - name: Setup Maturin Action
-        uses: messense/maturin-action@v1
+      - name: Deploy Package
+        uses: docker://konstin2/maturin:latest
         env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_USERNAME }}
-          MATURIN_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         with:
-          maturin-version: latest
-          target: ${{ matrix.target }}
-          manylinux: auto
-          command: publish
-          args: --interpreter python${{ matrix.pyversion }} --skip-existing --repository-url https://test.pypi.org/simple/
-      # - name: Check deployment
-      #   run: pip install --index-url discrust
-      # - run: pip install pytest
-      # - name: Run tests
-      #   run: pytest tests
+          entrypoint: /bin/bash
+          args: maturin publish \
+          -u $PYPI_USERNAME \
+          -p $PYPI_PASSWORD \
+          -i python${{ matrix.pyversion }} \ 
+          --skip-existing \
+          --repository-url https://test.pypi.org/simple/
+
+  # deploy-manylinux:
+  #   strategy:
+  #     matrix:
+  #       pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
+  #       target: [x86_64, i686]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install latests stable Rust
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: stable
+  #         override: true
+  #     - name: Install python
+  #       uses: actions/setup-python@v2
+  #       with:
+  #         python-version: ${{ matrix.pyversion }}
+  #     - name: Setup Maturin Action
+  #       uses: messense/maturin-action@v1
+  #       env:
+  #         MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_USERNAME }}
+  #         MATURIN_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  #       with:
+  #         maturin-version: latest
+  #         target: ${{ matrix.target }}
+  #         manylinux: auto
+  #         command: publish
+  #         args: --interpreter python${{ matrix.pyversion }} --skip-existing --repository-url https://test.pypi.org/simple/
