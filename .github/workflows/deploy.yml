@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         pyversion: ["3.9"]
-    os: ["windows-latest"]
+        os: ["windows-latest"]
     # ["ubuntu-latest", "windows-latest", "macos-latest"]
     runs-on: ${{ matrix.os }}
     steps:
