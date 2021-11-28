@@ -4,11 +4,11 @@ on:
     tags:
       - v*
 jobs:
-  package-actions:
+  deploy-windows-mac:
     strategy:
       matrix:
-        pyversion: ["3.9"]
-        os: ["windows-latest"]
+        pyversion: ["3.7", "3.8", "3.9"]
+        os: ["windows-latest", "macos-latest"]
     # ["ubuntu-latest", "windows-latest", "macos-latest"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -29,3 +29,22 @@ jobs:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: maturin publish -u $PYPI_USERNAME  -p $PYPI_PASSWORD -r https://test.pypi.org/simple -i python
+
+  deploy-manylinux:
+    strategy:
+      matrix:
+        pyversion: ["3.7", "3.8", "3.9"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Publish wheel
+        uses: docker://konstin2/maturin:latest
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.pyversion }}
+      - name: Deploy Package
+        shell: bash
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: maturin publish -u $PYPI_USERNAME  -p $PYPI_PASSWORD -r https://test.pypi.org/simple -i python --skip-existing

@@ -28,7 +28,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "discrust"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "discrust_core",
  "ndarray",
@@ -38,7 +38,7 @@ dependencies = [
 
 [[package]]
 name = "discrust_core"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "num",
  "thiserror",
