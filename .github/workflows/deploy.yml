@@ -29,7 +29,8 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish \
+        run: |
+          maturin publish \
           -u $PYPI_USERNAME \
           -p $PYPI_PASSWORD \
           -i python \
@@ -64,7 +65,8 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish \
+        run: |
+        maturin publish \
           -u $PYPI_USERNAME \
           -p $PYPI_PASSWORD \
           -i python${{ matrix.pyversion }} \
@@ -85,7 +87,8 @@ jobs:
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         with:
           entrypoint: /bin/bash
-          args: maturin publish \
+          args: |
+          maturin publish \
           -u $PYPI_USERNAME \
           -p $PYPI_PASSWORD \
           -i python${{ matrix.pyversion }} \ 
