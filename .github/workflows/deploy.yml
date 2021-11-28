@@ -29,11 +29,11 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish
-          -u $PYPI_USERNAME
-          -p $PYPI_PASSWORD
-          -i python
-          --skip-existing
+        run: maturin publish \
+          -u $PYPI_USERNAME \
+          -p $PYPI_PASSWORD \
+          -i python \
+          --skip-existing \
           --repository-url https://test.pypi.org/simple/
       # - name: Check deployment
       #   run: pip install --index-url discrust
@@ -64,11 +64,11 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish
-          -u $PYPI_USERNAME
-          -p $PYPI_PASSWORD
-          -i python${{ matrix.pyversion }}
-          --skip-existing
+        run: maturin publish \
+          -u $PYPI_USERNAME \
+          -p $PYPI_PASSWORD \
+          -i python${{ matrix.pyversion }} \
+          --skip-existing \
           --repository-url https://test.pypi.org/simple/
 
   deploy-manylinux:
