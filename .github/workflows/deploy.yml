@@ -30,13 +30,13 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: maturin publish |
-          -u $PYPI_USERNAME  |
-          -p $PYPI_PASSWORD |
-          -r https://test.pypi.org/simple |
-          --strip |
-          --i python${{ matrix.pyversion }} |
-          -t ${{ matrix.target }} |
+        run: maturin publish
+          -u $PYPI_USERNAME
+          -p $PYPI_PASSWORD
+          -r https://test.pypi.org/simple
+          --strip
+          --i python${{ matrix.pyversion }}
+          -t ${{ matrix.target }}
           --skip-existing
 
   deploy-mac:
@@ -63,12 +63,12 @@ jobs:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run:
-          maturin publish |
-          -u $PYPI_USERNAME  |
-          -p $PYPI_PASSWORD |
-          -r https://test.pypi.org/simple |
-          --strip |
-          --i python${{ matrix.pyversion }} |
+          maturin publish
+          -u $PYPI_USERNAME
+          -p $PYPI_PASSWORD
+          -r https://test.pypi.org/simple
+          --strip
+          --i python${{ matrix.pyversion }}
           --skip-existing
           # -t x86_64
   deploy-manylinux:
@@ -98,9 +98,9 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: auto
           command: publish
-          args: -u $PYPI_USERNAME  |
-            -p $PYPI_PASSWORD |
-            -r https://test.pypi.org/simple |
-            --strip |
-            -i python${{matrix.pyversion}} |
+          args: -u $PYPI_USERNAME
+            -p $PYPI_PASSWORD
+            -r https://test.pypi.org/simple
+            --strip
+            -i python${{matrix.pyversion}}
             --skip-existing
