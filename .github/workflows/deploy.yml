@@ -76,7 +76,7 @@ jobs:
       matrix:
         pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
     runs-on: ubuntu-latest
-    stepts:
+    steps:
       - uses: actions/checkout@v2
       - name: Deploy Package
         uses: docker://konstin2/maturin:latest
