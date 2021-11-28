@@ -37,10 +37,9 @@ jobs:
           --skip-existing
       - name: Check deployment
         run: pip install --index-url https://test.pypi.org/simple/ discrust
+      - run: pip install pytest
       - name: Run tests
-        run: pip install pytest
         run: pytest tests
-
 
   deploy-mac:
     strategy:
@@ -65,8 +64,7 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run:
-          maturin publish
+        run: maturin publish
           -u $PYPI_USERNAME
           -p $PYPI_PASSWORD
           -r https://test.pypi.org/simple
@@ -75,10 +73,11 @@ jobs:
 
       - name: Check deployment
         run: pip install --index-url https://test.pypi.org/simple/ discrust
+      - run: pip install pytest
       - name: Run tests
-        run: pip install pytest
-        run: pytest tests
-        
+        run:
+          pytest tests
+
           # -t x86_64
   deploy-manylinux:
     strategy:
@@ -110,6 +109,6 @@ jobs:
           args: --repository-url https://test.pypi.org/simple --interpreter python${{ matrix.pyversion }} --skip-existing
       - name: Check deployment
         run: pip install --index-url https://test.pypi.org/simple/ discrust
+      - run: pip install pytest
       - name: Run tests
-        run: pip install pytest
         run: pytest tests
