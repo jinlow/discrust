@@ -12,7 +12,7 @@ jobs:
         pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
         target: [x64, x86]
     # ["ubuntu-latest", "windows-latest", "macos-latest"]
-    runs-on: ${{ matrix.os }}
+    runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v2
       - name: Install latests stable Rust
@@ -96,9 +96,8 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: auto
           command: publish
-          args: -u $PYPI_USERNAME
-            -p $PYPI_PASSWORD
-            -r https://test.pypi.org/simple
-
-            -i python${{matrix.pyversion}}
+          args: --username $PYPI_USERNAME
+            --password $PYPI_PASSWORD
+            --repository-url https://test.pypi.org/simple
+            --interpreter python${{ matrix.pyversion }}
             --skip-existing
