@@ -35,7 +35,7 @@ jobs:
           -p $PYPI_PASSWORD
           -r https://test.pypi.org/simple
           -i python${{ matrix.pyversion }}
-          -t ${{ matrix.target }}
+          --target ${{ matrix.target }}
           --skip-existing
 
   deploy-mac:
@@ -89,11 +89,11 @@ jobs:
       - name: Setup Maturin Action
         uses: messense/maturin-action@v1
         env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_USERNAME }}
+          MATURIN_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         with:
           maturin-version: latest
           target: ${{ matrix.target }}
           manylinux: auto
           command: publish
-          args: --username $PYPI_USERNAME --password $PYPI_PASSWORD --repository-url https://test.pypi.org/simple --interpreter python${{ matrix.pyversion }} --skip-existing
+          args: --repository-url https://test.pypi.org/simple --interpreter python${{ matrix.pyversion }} --skip-existing
