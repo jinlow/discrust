@@ -10,7 +10,6 @@ jobs:
     strategy:
       matrix:
         pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
-        target: [x64, x86]
     # ["ubuntu-latest", "windows-latest", "macos-latest"]
     runs-on: "windows-latest"
     steps:
@@ -35,8 +34,13 @@ jobs:
           -p $PYPI_PASSWORD
           -r https://test.pypi.org/simple
           -i python${{ matrix.pyversion }}
-          --target ${{ matrix.target }}
           --skip-existing
+      - name: Check deployment
+        run: pip install --index-url https://test.pypi.org/simple/ discrust
+      - name: Run tests
+        run: pip install pytest
+        run: pytest tests
+
 
   deploy-mac:
     strategy:
@@ -68,6 +72,13 @@ jobs:
           -r https://test.pypi.org/simple
           -i python${{ matrix.pyversion }}
           --skip-existing
+
+      - name: Check deployment
+        run: pip install --index-url https://test.pypi.org/simple/ discrust
+      - name: Run tests
+        run: pip install pytest
+        run: pytest tests
+        
           # -t x86_64
   deploy-manylinux:
     strategy:
@@ -97,3 +108,8 @@ jobs:
           manylinux: auto
           command: publish
           args: --repository-url https://test.pypi.org/simple --interpreter python${{ matrix.pyversion }} --skip-existing
+      - name: Check deployment
+        run: pip install --index-url https://test.pypi.org/simple/ discrust
+      - name: Run tests
+        run: pip install pytest
+        run: pytest tests
