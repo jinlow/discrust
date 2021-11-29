@@ -35,7 +35,7 @@ jobs:
       - name: Run Package Tests
         run: pip install pytest && pytest tests
       - name: Save Artifacts
-        uses: actions/upload-artifacts@v2
+        uses: actions/upload-artifact@v2
         with:
           name: wheels
           path: target/wheels
