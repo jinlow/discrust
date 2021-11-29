@@ -32,7 +32,7 @@ jobs:
       - name: Install wheel
         run: |
           pip install numpy pandas
-          pip install discrust --no-index --find-links target/wheels --force-reinstall
+          pip install discrust --no-index --find-links target/wheels --no-deps --force-reinstall
       - name: Run Package Tests
         run: pip install pytest && pytest tests
       - name: Save Artifacts
