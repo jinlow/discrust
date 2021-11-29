@@ -1,0 +1,36 @@
+name: Test and Deploy
+on: [push]
+
+jobs:
+  run-windows:
+    strategy:
+      matrix:
+        pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
+    runs-on: "windows-latest"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latests stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Run Cargo tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p discrust_core
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.pyversion }}
+      - name: Build Wheels with maturin
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          command: build
+          args: --release --out dist --strip
+      - name: Install wheel
+        run: |
+          pip install discrust --no-index --find-links dist --force-reinstall
+      - name: Run Package Tests
+        run: pip install pytest && pytest tests
