@@ -31,6 +31,7 @@ jobs:
           args: --release --strip --interpreter python
       - name: Install wheel
         run: |
+          pip install numpy pandas
           pip install discrust --no-index --find-links target/wheels --force-reinstall
       - name: Run Package Tests
         run: pip install pytest && pytest tests
