@@ -5,7 +5,7 @@ jobs:
   windows-build-tests:
     strategy:
       matrix:
-        pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
+        pyversion: ["3.9"] #["3.7", "3.8", "3.9"]
     runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v2
@@ -44,7 +44,7 @@ jobs:
   macos-build-test:
     strategy:
       matrix:
-        pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
+        pyversion: ["3.9"] #["3.7", "3.8", "3.9"]
     runs-on: "macos-latest"
     steps:
       - uses: actions/checkout@v2
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
+        pyversion: ["3.9"] #["3.7", "3.8", "3.9"]
         # target: [x86_64, i686]
     steps:
       - uses: actions/checkout@v2
@@ -130,4 +130,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade twine
-          twine upload --skip-existing --repository testpypi *
+          twine upload --skip-existing --repository testpypi --verbose *
