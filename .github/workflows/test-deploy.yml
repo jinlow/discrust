@@ -40,6 +40,16 @@ jobs:
         with:
           name: wheels
           path: target/wheels
+      - name: Publish Wheels
+        uses: messense/maturin-action@v1
+        command: publish
+        with:
+          args: |
+            --repository-url https://test.pypi.org/legacy/ \
+            --username ${{ secrets.PYPI_USERNAME }} \
+            --password ${{ secrets.PYPI_PASSWORD }} \
+            --interpreter python${{ matrix.pyversion }}
+            --skip-existing
 
   macos-build-test:
     strategy:
@@ -79,6 +89,16 @@ jobs:
         with:
           name: wheels
           path: target/wheels
+      - name: Publish Wheels
+        uses: messense/maturin-action@v1
+        command: publish
+        with:
+          args: |
+            --repository-url https://test.pypi.org/legacy/ \
+            --username ${{ secrets.PYPI_USERNAME }} \
+            --password ${{ secrets.PYPI_PASSWORD }} \
+            --interpreter python${{ matrix.pyversion }}
+            --skip-existing
 
   linux-build-test:
     runs-on: ubuntu-latest
@@ -109,25 +129,36 @@ jobs:
         with:
           name: wheels
           path: target/wheels
+      - name: Publish Wheels
+        uses: messense/maturin-action@v1
+        command: publish
+        with:
+          args: |
+            --repository-url https://test.pypi.org/legacy/ \
+            --username ${{ secrets.PYPI_USERNAME }} \
+            --password ${{ secrets.PYPI_PASSWORD }} \
+            --interpreter python${{ matrix.pyversion }}
+            --skip-existing
+      
 
-  release:
-    name: Release Wheels
-    runs-on: ubuntu-latest
-    # if: "startsWith(github.ref, 'refs/tags/')"
-    needs: [windows-build-tests, macos-build-test]
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: wheels
-      - name: List Wheels
-        run: ls -R
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - name: Publish to PyPi
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          pip install --upgrade twine
-          twine upload --skip-existing --verbose *
+  # release:
+  #   name: Release Wheels
+  #   runs-on: ubuntu-latest
+  #   # if: "startsWith(github.ref, 'refs/tags/')"
+  #   needs: [windows-build-tests, macos-build-test]
+  #   steps:
+  #     - uses: actions/download-artifact@v2
+  #       with:
+  #         name: wheels
+  #     - name: List Wheels
+  #       run: ls -R
+  #     - uses: actions/setup-python@v2
+  #       with:
+  #         python-version: 3.9
+  #     - name: Publish to PyPi
+  #       env:
+  #         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+  #         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  #       run: |
+  #         pip install --upgrade twine
+  #         twine upload --skip-existing --repository testpypi --verbose *
