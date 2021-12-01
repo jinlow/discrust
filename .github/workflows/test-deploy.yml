@@ -97,11 +97,13 @@ jobs:
         with:
           target: x86_64
           manylinux: auto
-          args: --release --strip --interpreter python --no-sdist
+          args: --release --strip --no-sdist
       - name: Install wheel
         run: |
           pip install numpy pandas
           pip install discrust --no-index --find-links target/wheels --no-deps --force-reinstall
+      - name: Run Package Tests
+        run: pip install pytest && pytest tests
       - name: Save Artifacts
         uses: actions/upload-artifact@v2
         with:
