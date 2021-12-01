@@ -67,7 +67,7 @@ jobs:
         with:
           target: x86_64
           command: build
-          args: --release --strip --interpreter python --no-sdist
+          args: --release --strip --interpreter python${{ matrix.pyversion }} --no-sdist
       - name: Install wheel
         run: |
           pip install numpy pandas
