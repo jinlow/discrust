@@ -5,7 +5,7 @@ jobs:
   windows-build-tests:
     strategy:
       matrix:
-        pyversion: ["3.9"] #["3.7", "3.8", "3.9"]
+        pyversion: ["3.7", "3.8", "3.9", "3.10"]
     runs-on: "windows-latest"
     steps:
       - uses: actions/checkout@v2
@@ -44,12 +44,12 @@ jobs:
         uses: messense/maturin-action@v1
         with:
           command: publish
-          args: --repository-url https://test.pypi.org/legacy/ --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python --skip-existing
+          args: --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python --skip-existing
 
   macos-build-test:
     strategy:
       matrix:
-        pyversion: ["3.9"] #["3.7", "3.8", "3.9"]
+        pyversion: ["3.7", "3.8", "3.9", "3.10"]
     runs-on: "macos-latest"
     steps:
       - uses: actions/checkout@v2
@@ -88,13 +88,13 @@ jobs:
         uses: messense/maturin-action@v1
         with:
           command: publish
-          args: --repository-url https://test.pypi.org/legacy/ --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python${{ matrix.pyversion }} --skip-existing --no-sdist
+          args: --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python${{ matrix.pyversion }} --skip-existing --no-sdist
 
   linux-build-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pyversion: ["3.9"] #["3.7", "3.8", "3.9"]
+        pyversion: ["3.7", "3.8", "3.9", "3.10"]
         # target: [x86_64, i686]
     steps:
       - uses: actions/checkout@v2
@@ -139,7 +139,7 @@ jobs:
           command: publish
           manylinux: auto
           target: x86_64
-          args: --repository-url https://test.pypi.org/legacy/ --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python${{ matrix.pyversion }} --skip-existing --no-sdist
+          args: --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python${{ matrix.pyversion }} --skip-existing --no-sdist
       
 
   # release:
