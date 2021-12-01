@@ -42,8 +42,8 @@ jobs:
           path: target/wheels
       - name: Publish Wheels
         uses: messense/maturin-action@v1
-        command: publish
         with:
+          command: publish
           args: |
             --repository-url https://test.pypi.org/legacy/ \
             --username ${{ secrets.PYPI_USERNAME }} \
@@ -91,8 +91,8 @@ jobs:
           path: target/wheels
       - name: Publish Wheels
         uses: messense/maturin-action@v1
-        command: publish
         with:
+          command: publish
           args: |
             --repository-url https://test.pypi.org/legacy/ \
             --username ${{ secrets.PYPI_USERNAME }} \
@@ -131,8 +131,8 @@ jobs:
           path: target/wheels
       - name: Publish Wheels
         uses: messense/maturin-action@v1
-        command: publish
         with:
+          command: publish
           args: |
             --repository-url https://test.pypi.org/legacy/ \
             --username ${{ secrets.PYPI_USERNAME }} \
