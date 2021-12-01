@@ -67,7 +67,7 @@ jobs:
         with:
           target: x86_64
           command: build
-          args: --release --strip --interpreter python
+          args: --release --strip --interpreter python --no-dist
       - name: Install wheel
         run: |
           pip install numpy pandas
@@ -89,15 +89,15 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: wheels
-      - run: ls -R
-
-      # - uses: actions/setup-python@v2
-      #   with:
-      #     python-version: 3.9
-      # - name: Publish to PyPi
-      #   env:
-      #     TWINE_USERNAME: ${{ secrets.PYPI_PASSWORD }}
-      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      #   run: |
-      #     pip install --upgrade twine
-      #     twine upload --skip-existing --repository testpypi target/wheels/*
+      - name: List Wheels
+        run: ls -R
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Publish to PyPi
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          pip install --upgrade twine
+          twine upload --skip-existing --repository testpypi *
