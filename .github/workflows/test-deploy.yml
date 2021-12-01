@@ -130,4 +130,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade twine
-          twine upload --skip-existing --repository testpypi --verbose *
+          twine upload --skip-existing --verbose *
