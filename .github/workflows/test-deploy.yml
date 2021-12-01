@@ -67,13 +67,41 @@ jobs:
         with:
           target: x86_64
           command: build
-          args: --release --strip --interpreter python --no-dist
+          args: --release --strip --interpreter python --no-sdist
       - name: Install wheel
         run: |
           pip install numpy pandas
           pip install discrust --no-index --find-links target/wheels --no-deps --force-reinstall
       - name: Run Package Tests
         run: pip install --upgrade pytest && pytest tests
+      - name: Save Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: target/wheels
+
+  linux-build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pyversion: ["3.8"] #["3.7", "3.8", "3.9"]
+        # target: [x86_64, i686]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.pyversion }}
+          architecture: x64
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          manylinux: auto
+          args: --release --strip --interpreter python --no-sdist
+      - name: Install wheel
+        run: |
+          pip install numpy pandas
+          pip install discrust --no-index --find-links target/wheels --no-deps --force-reinstall
       - name: Save Artifacts
         uses: actions/upload-artifact@v2
         with:
