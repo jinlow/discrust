@@ -48,7 +48,7 @@ jobs:
             --repository-url https://test.pypi.org/legacy/ \
             --username ${{ secrets.PYPI_USERNAME }} \
             --password ${{ secrets.PYPI_PASSWORD }} \
-            --interpreter python${{ matrix.pyversion }}
+            --interpreter python${{ matrix.pyversion }} \
             --skip-existing
 
   macos-build-test:
@@ -97,7 +97,7 @@ jobs:
             --repository-url https://test.pypi.org/legacy/ \
             --username ${{ secrets.PYPI_USERNAME }} \
             --password ${{ secrets.PYPI_PASSWORD }} \
-            --interpreter python${{ matrix.pyversion }}
+            --interpreter python${{ matrix.pyversion }} \
             --skip-existing
 
   linux-build-test:
@@ -137,7 +137,7 @@ jobs:
             --repository-url https://test.pypi.org/legacy/ \
             --username ${{ secrets.PYPI_USERNAME }} \
             --password ${{ secrets.PYPI_PASSWORD }} \
-            --interpreter python${{ matrix.pyversion }}
+            --interpreter python${{ matrix.pyversion }} \
             --skip-existing
       
 
