@@ -112,18 +112,18 @@ jobs:
         with:
           python-version: ${{ matrix.pyversion }}
           architecture: x64
-      # - name: Build Wheels
-      #   uses: messense/maturin-action@v1
-      #   with:
-      #     target: x86_64
-      #     manylinux: auto
-      #     args: --release --strip --no-sdist --interpreter python${{ matrix.pyversion }}
-      # - name: Install wheel
-      #   run: |
-      #     pip install numpy pandas
-      #     pip install discrust --no-index --find-links target/wheels --no-deps --force-reinstall
-      # - name: Run Package Tests
-      #   run: pip install pytest && pytest tests
+      - name: Build Wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          manylinux: auto
+          args: --release --strip --no-sdist --interpreter python${{ matrix.pyversion }}
+      - name: Install wheel
+        run: |
+          pip install numpy pandas
+          pip install discrust --no-index --find-links target/wheels --no-deps --force-reinstall
+      - name: Run Package Tests
+        run: pip install pytest && pytest tests
       # - name: Save Artifacts
       #   uses: actions/upload-artifact@v2
       #   with:
@@ -137,6 +137,8 @@ jobs:
         uses: messense/maturin-action@v1
         with:
           command: publish
+          manylinux: auto
+          target: x86_64
           args: --repository-url https://test.pypi.org/legacy/ --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }} --interpreter python${{ matrix.pyversion }} --skip-existing --no-sdist
       
 
