@@ -129,8 +129,10 @@ jobs:
         with:
           name: wheels
           path: target/wheels
-      # - name: Cargo Clean
-      #   uses:
+      - name: Cargo Clean
+        uses: actions-rs/cargo@v1
+        with:
+          command: clean
       - name: Publish Wheels
         uses: messense/maturin-action@v1
         with:
