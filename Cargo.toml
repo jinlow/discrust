@@ -1,6 +1,6 @@
 [package]
 name = "discrust"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2018"
 
 [lib]
@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 # members=["crates/*/"]
 
 [dependencies]
-discrust_core = {version="0.1.3", path="crates/discrust_core"}
+discrust_core = {version="0.1.5", path="crates/discrust_core"}
 numpy = "0.15"
 ndarray = "0.15.1"
 

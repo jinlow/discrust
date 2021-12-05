@@ -239,8 +239,8 @@ mod test {
         let w_ = vec![1.0; fare.len()];
         let splits = disc.fit(&fare, &survived, &w_, None).unwrap();
 
-        disc.predict_idx(&fare);
-        disc.predict_woe(&fare);
+        disc.predict_idx(&fare).unwrap();
+        disc.predict_woe(&fare).unwrap();
 
         assert_eq!(
             splits,
@@ -329,6 +329,7 @@ mod test {
         // println!("{:?}", disc.predict(&fare));
     }
 
+    #[test]
     fn test_discretizer_mono_none_nan_excp() {
         let mut fare: Vec<f64> = Vec::new();
         let mut survived: Vec<f64> = Vec::new();

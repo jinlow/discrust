@@ -1,6 +1,6 @@
 /target
 /.vscode
 crates/discrust_core/target
-crates/discrust_core/Cargo.toml
+crates/discrust_core/Cargo.lock
 scratch.py
 __pycache__/
