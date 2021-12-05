@@ -1,12 +1,27 @@
 use num::Float;
 use std::cmp::Ordering;
 
+// pub fn nan_safe_compare<T: Float>(i: &T, j: &T) -> Ordering {
+//     return match (i.is_nan(), j.is_nan()) {
+//         (true, true) => Ordering::Equal,
+//         (true, false) => Ordering::Less,
+//         (false, true) => Ordering::Greater,
+//         (false, false) => i.partial_cmp(j).unwrap(),
+//     };
+// }
+
+
 pub fn nan_safe_compare<T: Float>(i: &T, j: &T) -> Ordering {
-    return match (i.is_nan(), j.is_nan()) {
-        (true, true) => Ordering::Equal,
-        (true, false) => Ordering::Less,
-        (false, true) => Ordering::Greater,
-        (false, false) => i.partial_cmp(j).unwrap(),
+    return match i.partial_cmp(j) {
+        Some(o) => o,
+        None => {
+            match (i.is_nan(), j.is_nan()) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Less,
+                (false, true) => Ordering::Greater,
+                (false, false) => i.partial_cmp(j).unwrap(),
+            }
+        }
     };
 }
 
