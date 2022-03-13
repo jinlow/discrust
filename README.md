@@ -6,11 +6,6 @@
 
 The `discrust` package provides a supervised discretization algorithm. Under the hood it implements a decision tree, using information value to find the optimal splits, and provides several different methods to constrain the final discretization scheme.
 
-_The package draws heavily from the [ivpy](https://github.com/gravesee/ivpy) package, both in the algorithm and the parameter controls. Why make another package? This package serves as a proof of
-concept of building a python package using Rust and pyo3. Additionally the goal is for this
-package to better align with the scikit-learn API, and possibly be used in other Rust based
-credit score building tools._
-
 ## Usage
 
 The package has a single user facing class, `Discretizer` that can be instantiated with the following arguments.
@@ -174,3 +169,9 @@ maturin build --release
 ```
 
 _I have had some problems building packages with maturin directly in a conda environment, this is actually a bug on anaconda's side that will hopefully be resolved. If this does give you any problems, it's usually easiest to build a wheel inside of a `venv` and then install the wheel._
+
+### Acknowledgments
+_The package draws heavily from the [ivpy](https://github.com/gravesee/ivpy) package, both in the algorithm and the parameter controls. Why make another package? This package serves as a proof of
+concept of building a python package using Rust and pyo3, as well as offers cleaner methods for dealing with exception values. Additionally the goal is for this
+package to better align with the scikit-learn API, and possibly be used in other Rust based
+credit score building tools._
