@@ -6,6 +6,8 @@
 
 The `discrust` package provides a supervised discretization algorithm. Under the hood it implements a decision tree, using information value to find the optimal splits, and provides several different methods to constrain the final discretization scheme. This algorithm identifies the optimal way to split a continuous variable into discrete bins, while maximizing the predictive value of those bins with respect to some binary dependent variable.
 
+The Rust code for the actual algorithm implementation can be found in the [crates/discrust_core](https://github.com/jinlow/discrust/tree/main/crates/discrust_core/src) directory. The code for the python bindings can be found in the [src](https://github.com/jinlow/discrust/tree/main/src) directory.
+
 ## Usage
 
 The package has a single user facing class, `Discretizer` that can be instantiated with the following arguments.
