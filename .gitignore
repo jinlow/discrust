@@ -4,3 +4,4 @@ crates/discrust_core/target
 crates/discrust_core/Cargo.lock
 scratch.py
 __pycache__/
+Cargo.lock
