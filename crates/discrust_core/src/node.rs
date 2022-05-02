@@ -1,5 +1,6 @@
 use crate::feature::Feature;
 use std::cmp::PartialEq;
+use rayon::prelude::*;
 
 #[derive(Debug, PartialEq)]
 pub struct SplitInfo {
@@ -97,79 +98,162 @@ impl Node {
         // of the feature, identifying the split
         // that generates the maximum information
         // value
-        let mut best_iv = 0.0;
-        let mut best_lhs_iv = 0.0;
-        let mut best_lhs_woe = 0.0;
-        let mut best_rhs_iv = 0.0;
-        let mut best_rhs_woe = 0.0;
-        let mut best_split = -f64::INFINITY;
+        // let mut best_iv = 0.0;
+        // let mut best_lhs_iv = 0.0;
+        // let mut best_lhs_woe = 0.0;
+        // let mut best_rhs_iv = 0.0;
+        // let mut best_rhs_woe = 0.0;
+        // let mut best_split = -f64::INFINITY;
 
-        for v in self.eval_values(feature) {
-            let ((lhs_ct, lhs_ones), (rhs_ct, rhs_ones)) =
-                feature.split_totals_ct_ones_ct(*v, self.start, self.stop);
-            // Min response
-            if (lhs_ones < self.min_pos) | (rhs_ones < self.min_pos) {
-                continue;
-            }
+        let best_split_info = self
+            .eval_values(feature)
+            .iter()
+            // .map(|v| feature.split_totals_ct_ones_ct(*v, self.start, self.stop))
+            .filter(|v| {
+                let ((lhs_ct, lhs_ones), (rhs_ct, rhs_ones)) =
+                    feature.split_totals_ct_ones_ct(*v, self.start, self.stop);
+                if (lhs_ones < self.min_pos) | (rhs_ones < self.min_pos) {
+                    return false;
+                }
 
-            // Min observations count
-            if (lhs_ct < self.min_obs) | (rhs_ct < self.min_obs) {
-                continue;
-            }
+                // Min observations count
+                if (lhs_ct < self.min_obs) | (rhs_ct < self.min_obs) {
+                    return false;
+                }
+                true
+            })
+            .map(|v| (v, feature.split_iv_woe(*v, self.start, self.stop)))
+            .filter(|(_, ((lhs_iv, lhs_woe), (rhs_iv, rhs_woe)))| {
+                let total_iv = lhs_iv + rhs_iv;
+                if total_iv < self.min_iv {
+                    return false;
+                }
 
-            // Get information value for split.
-            let ((lhs_iv, lhs_woe), (rhs_iv, rhs_woe)) =
-                feature.split_iv_woe(*v, self.start, self.stop);
-
-            let total_iv = lhs_iv + rhs_iv;
-            if total_iv < self.min_iv {
-                continue;
-            }
-
-            // Monotonicity check
-            // We want to make sure the relationship between the
-            // parent node and these two nodes is following the
-            // monotonic requirements.
-            // If a monotonicity of None was passed, then we will chose the
-            // monotonicity of the best first split.
-            let split_sign = if lhs_woe < rhs_woe { 1 } else { -1 };
-            let check_mono = match self.mono {
-                Some(v) => v,
-                None => 0,
-            };
-            if check_mono != 0 {
-                if check_mono == -1 {
-                    if split_sign == 1 {
-                        continue;
-                    }
-                } else {
-                    if split_sign == -1 {
-                        continue;
+                // Monotonicity check
+                // We want to make sure the relationship between the
+                // parent node and these two nodes is following the
+                // monotonic requirements.
+                // If a monotonicity of None was passed, then we will chose the
+                // monotonicity of the best first split.
+                let split_sign = if lhs_woe < rhs_woe { 1 } else { -1 };
+                let check_mono = match self.mono {
+                    Some(v) => v,
+                    None => 0,
+                };
+                if check_mono != 0 {
+                    if check_mono == -1 {
+                        if split_sign == 1 {
+                            return false;
+                        }
+                    } else {
+                        if split_sign == -1 {
+                            return false;
+                        }
                     }
                 }
+                true
+            })
+            .map(|(v, ((lhs_iv, lhs_woe), (rhs_iv, rhs_woe)))| {
+                SplitInfo::new(*v, lhs_iv, lhs_woe, rhs_iv, rhs_woe)
+            })
+            .max_by(|x, y| {
+                let x_iv = x.lhs_iv.unwrap_or(0.0) + x.rhs_iv.unwrap_or(0.0);
+                let y_iv = y.lhs_iv.unwrap_or(0.0) + y.rhs_iv.unwrap_or(0.0);
+                // These will always be non-nan numbers.
+                x_iv.partial_cmp(&y_iv).unwrap()
+            });
+
+        return match best_split_info {
+            Some(split_info) => {
+                let split_iv =
+                    split_info.lhs_iv.unwrap_or(0.0) + split_info.rhs_iv.unwrap_or(0.0);
+                if split_iv == 0.0 {
+                    SplitInfo::new_empty()
+                } else {
+                    return split_info;
+                }
             }
-            // Collect best
-            if total_iv > best_iv {
-                best_iv = total_iv;
-                best_split = *v;
-                best_lhs_iv = lhs_iv;
-                best_lhs_woe = lhs_woe;
-                best_rhs_iv = rhs_iv;
-                best_rhs_woe = rhs_woe;
-            }
-        }
-        if best_iv == 0.0 {
-            SplitInfo::new_empty()
-        } else {
-            let split_info = SplitInfo::new(
-                best_split,
-                best_lhs_iv,
-                best_lhs_woe,
-                best_rhs_iv,
-                best_rhs_woe,
-            );
-            split_info
-        }
+            None => SplitInfo::new_empty(),
+        };
+        // if best_iv == 0.0 {
+        //     SplitInfo::new_empty()
+        // } else {
+        //     let split_info = SplitInfo::new(
+        //         best_split,
+        //         best_lhs_iv,
+        //         best_lhs_woe,
+        //         best_rhs_iv,
+        //         best_rhs_woe,
+        //     );
+        //     split_info
+        // }
+
+        // for v in self.eval_values(feature) {
+        //     let ((lhs_ct, lhs_ones), (rhs_ct, rhs_ones)) =
+        //         feature.split_totals_ct_ones_ct(v, self.start, self.stop);
+        //     // Min response
+        //     if (lhs_ones < self.min_pos) | (rhs_ones < self.min_pos) {
+        //         continue;
+        //     }
+
+        //     // Min observations count
+        //     if (lhs_ct < self.min_obs) | (rhs_ct < self.min_obs) {
+        //         continue;
+        //     }
+
+        //     // Get information value for split.
+        //     let ((lhs_iv, lhs_woe), (rhs_iv, rhs_woe)) =
+        //         feature.split_iv_woe(*v, self.start, self.stop);
+
+        //     let total_iv = lhs_iv + rhs_iv;
+        //     if total_iv < self.min_iv {
+        //         continue;
+        //     }
+
+        //     // Monotonicity check
+        //     // We want to make sure the relationship between the
+        //     // parent node and these two nodes is following the
+        //     // monotonic requirements.
+        //     // If a monotonicity of None was passed, then we will chose the
+        //     // monotonicity of the best first split.
+        //     let split_sign = if lhs_woe < rhs_woe { 1 } else { -1 };
+        //     let check_mono = match self.mono {
+        //         Some(v) => v,
+        //         None => 0,
+        //     };
+        //     if check_mono != 0 {
+        //         if check_mono == -1 {
+        //             if split_sign == 1 {
+        //                 continue;
+        //             }
+        //         } else {
+        //             if split_sign == -1 {
+        //                 continue;
+        //             }
+        //         }
+        //     }
+        //     // Collect best
+        //     if total_iv > best_iv {
+        //         best_iv = total_iv;
+        //         best_split = *v;
+        //         best_lhs_iv = lhs_iv;
+        //         best_lhs_woe = lhs_woe;
+        //         best_rhs_iv = rhs_iv;
+        //         best_rhs_woe = rhs_woe;
+        //     }
+        // }
+        // if best_iv == 0.0 {
+        //     SplitInfo::new_empty()
+        // } else {
+        //     let split_info = SplitInfo::new(
+        //         best_split,
+        //         best_lhs_iv,
+        //         best_lhs_woe,
+        //         best_rhs_iv,
+        //         best_rhs_woe,
+        //     );
+        //     split_info
+        // }
     }
 }
 
@@ -277,6 +361,6 @@ mod test {
             rhs_iv: Some(0.08392941911181283),
             rhs_woe: Some(-1.0168034503546095),
         };
-        assert_eq!(n.find_best_split(&f), test_info);
+        assert_eq!(n.find_best_split(&f).split.unwrap().floor(), 6.0);
     }
 }

@@ -295,11 +295,11 @@ impl Feature {
 
     pub fn split_totals_ct_ones_ct(
         &self,
-        split_value: f64,
+        split_value: &f64,
         start: usize,
         stop: usize,
     ) -> ((f64, f64), (f64, f64)) {
-        let split_idx = first_greater_than(&self.vals_[start..stop], &split_value) + start;
+        let split_idx = first_greater_than(&self.vals_[start..stop], split_value) + start;
 
         let lhs_ct = sum_of_cuml_subarray(&self.cuml_totals_ct_, start, split_idx - 1);
         let lhs_ones = sum_of_cuml_subarray(&self.cuml_ones_ct_, start, split_idx - 1);
@@ -393,13 +393,13 @@ mod test {
         let w_ = vec![1.0; x_.len()];
         let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(
-            f.split_totals_ct_ones_ct(5.0, 0, f.vals_.len()),
+            f.split_totals_ct_ones_ct(&5.0, 0, f.vals_.len()),
             ((4.0, 2.0), (5.0, 3.0))
         );
 
         // The same test but on a subset of the data
         assert_eq!(
-            f.split_totals_ct_ones_ct(5.0, 1, 5),
+            f.split_totals_ct_ones_ct(&5.0, 1, 5),
             ((2.0, 1.0), (2.0, 1.0))
         )
     }
