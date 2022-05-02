@@ -198,8 +198,8 @@ mod test {
             6.2375,
             0.22001303079783097,
             -0.6286086594223742,
-            0.3064140580738651,
-            0.8754687373539001,
+            0.3064140580738649,
+            0.8754687373538999,
         );
         assert_eq!(n.find_best_split(&f), comp_info);
     }
@@ -274,8 +274,8 @@ mod test {
             split: Some(6.4375),
             lhs_iv: Some(f64::INFINITY),
             lhs_woe: Some(-f64::INFINITY),
-            rhs_iv: Some(0.08392941911181274),
-            rhs_woe: Some(-1.016803450354609),
+            rhs_iv: Some(0.08392941911181283),
+            rhs_woe: Some(-1.0168034503546095),
         };
         assert_eq!(n.find_best_split(&f), test_info);
     }

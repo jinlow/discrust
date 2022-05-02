@@ -1,7 +1,7 @@
 use crate::errors::DiscrustError;
 use crate::feature::Feature;
 use crate::node::{Node, NodePtr};
-use crate::utils::nan_safe_compare;
+use crate::utils::{first_greater_than, nan_safe_compare};
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 
@@ -94,7 +94,7 @@ impl Discretizer {
                 self.mono = Some(split_sign);
             }
 
-            let split_idx = feature.vals_.iter().position(|&v| v > split);
+            let split_idx = first_greater_than(&feature.vals_, &split);
 
             let lhs_node = Node::new(
                 &feature,
@@ -105,7 +105,7 @@ impl Discretizer {
                 info.lhs_woe,
                 info.lhs_iv,
                 Some(node.start),
-                split_idx,
+                Some(split_idx),
             );
             let rhs_node = Node::new(
                 &feature,
@@ -115,7 +115,7 @@ impl Discretizer {
                 self.mono,
                 info.rhs_woe,
                 info.rhs_iv,
-                split_idx,
+                Some(split_idx),
                 Some(node.stop),
             );
 

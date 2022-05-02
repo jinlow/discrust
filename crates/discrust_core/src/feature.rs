@@ -1,4 +1,5 @@
-use crate::{utils::nan_safe_compare, DiscrustError};
+use crate::utils::{first_greater_than, nan_safe_compare};
+use crate::DiscrustError;
 use std::{cmp::Ordering, collections::HashMap};
 
 /// A Feature struct
@@ -10,10 +11,10 @@ use std::{cmp::Ordering, collections::HashMap};
 #[derive(Debug)]
 pub struct Feature {
     pub vals_: Vec<f64>,
-    ones_ct_: Vec<f64>,
-    totals_ct_: Vec<f64>,
-    ones_dist_: Vec<f64>,
-    zero_dist_: Vec<f64>,
+    cuml_ones_ct_: Vec<f64>,
+    cuml_totals_ct_: Vec<f64>,
+    cuml_ones_dist_: Vec<f64>,
+    cuml_zero_dist_: Vec<f64>,
     pub exception_values: ExceptionValues,
 }
 
@@ -244,12 +245,18 @@ impl Feature {
 
         exception_values.calculate_iv_woe(total_ones, total_zero);
 
+        // Generate cumulative sums left to right.
+        let cuml_ones_ct_: Vec<f64> = cuml_array(&ones_ct_);
+        let cuml_totals_ct_: Vec<f64> = cuml_array(&totals_ct_);
+        let cuml_ones_dist_: Vec<f64> = cuml_array(&ones_dist_);
+        let cuml_zero_dist_: Vec<f64> = cuml_array(&zero_dist_);
+
         Ok(Feature {
             vals_,
-            ones_ct_,
-            totals_ct_,
-            ones_dist_,
-            zero_dist_,
+            cuml_ones_ct_,
+            cuml_totals_ct_,
+            cuml_ones_dist_,
+            cuml_zero_dist_,
             exception_values,
         })
     }
@@ -269,28 +276,17 @@ impl Feature {
         // This means the split_idx, will be one after our actual
         // split value, thus the left hand side will include
         // the split value.
-        let split_idx = (&self.vals_[start..stop])
-            .iter()
-            .position(|&v| v > split_value)
-            .unwrap_or(stop - start);
+        let split_idx = first_greater_than(&self.vals_[start..stop], &split_value) + start;
 
         // Accumulate the left hand side.
-        let mut lhs_zero_dist = 0.0;
-        let mut lhs_ones_dist = 0.0;
-        for i in 0..(split_idx) {
-            lhs_zero_dist += &self.zero_dist_[start..stop][i];
-            lhs_ones_dist += &self.ones_dist_[start..stop][i];
-        }
+        let lhs_zero_dist = sum_of_cuml_subarray(&self.cuml_zero_dist_, start, split_idx - 1);
+        let lhs_ones_dist = sum_of_cuml_subarray(&self.cuml_ones_dist_, start, split_idx - 1);
         let lhs_woe = (lhs_ones_dist / lhs_zero_dist).ln();
         let lhs_iv = (lhs_ones_dist - lhs_zero_dist) * lhs_woe;
 
         // Accumulate the right hand side.
-        let mut rhs_zero_dist = 0.0;
-        let mut rhs_ones_dist = 0.0;
-        for i in (split_idx)..self.vals_[start..stop].len() {
-            rhs_zero_dist += &self.zero_dist_[start..stop][i];
-            rhs_ones_dist += &self.ones_dist_[start..stop][i];
-        }
+        let rhs_zero_dist = sum_of_cuml_subarray(&self.cuml_zero_dist_, split_idx, stop - 1);
+        let rhs_ones_dist = sum_of_cuml_subarray(&self.cuml_ones_dist_, split_idx, stop - 1);
         let rhs_woe = (rhs_ones_dist / rhs_zero_dist).ln();
         let rhs_iv = (rhs_ones_dist - rhs_zero_dist) * rhs_woe;
 
@@ -303,26 +299,33 @@ impl Feature {
         start: usize,
         stop: usize,
     ) -> ((f64, f64), (f64, f64)) {
-        let split_idx = (&self.vals_[start..stop])
-            .iter()
-            .position(|&v| v > split_value)
-            // Double check we should be doing this...
-            .unwrap_or(stop - start);
-        let mut lhs_ct = 0.0;
-        let mut lhs_ones = 0.0;
-        for i in 0..(split_idx) {
-            lhs_ct += &self.totals_ct_[start..stop][i];
-            lhs_ones += &self.ones_ct_[start..stop][i];
-        }
+        let split_idx = first_greater_than(&self.vals_[start..stop], &split_value) + start;
 
-        let mut rhs_ct = 0.0;
-        let mut rhs_ones = 0.0;
-        for i in (split_idx)..self.vals_[start..stop].len() {
-            rhs_ct += &self.totals_ct_[start..stop][i];
-            rhs_ones += &self.ones_ct_[start..stop][i];
-        }
+        let lhs_ct = sum_of_cuml_subarray(&self.cuml_totals_ct_, start, split_idx - 1);
+        let lhs_ones = sum_of_cuml_subarray(&self.cuml_ones_ct_, start, split_idx - 1);
+
+        let rhs_ct = sum_of_cuml_subarray(&self.cuml_totals_ct_, split_idx, stop - 1);
+        let rhs_ones = sum_of_cuml_subarray(&self.cuml_ones_ct_, split_idx, stop - 1);
+
         ((lhs_ct, lhs_ones), (rhs_ct, rhs_ones))
     }
+}
+
+fn sum_of_cuml_subarray(x: &[f64], start: usize, stop: usize) -> f64 {
+    if start == 0 {
+        x[stop]
+    } else {
+        x[stop] - x[start - 1]
+    }
+}
+
+fn cuml_array(x: &[f64]) -> Vec<f64> {
+    x.iter()
+        .scan(0.0, |acc, &x| {
+            *acc = *acc + x;
+            Some(*acc)
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -343,17 +346,17 @@ mod test {
         let w_ = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
         let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(f.vals_, vec![1.0, 2.0, 3.0]);
-        assert_eq!(f.totals_ct_, vec![2.0, 2.0, 4.0]);
+        assert_eq!(f.cuml_totals_ct_, vec![2.0, 4.0, 8.0]);
 
         let x_ = vec![2.0, 2.0, 1.0, 1.0];
         let y_ = vec![1.0, 1.0, 1.0, 0.0];
         let w_ = vec![3.0, 3.0, 1.0, 1.0];
         let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
         assert_eq!(f.vals_, vec![1.0, 2.0]);
-        assert_eq!(f.totals_ct_, vec![2.0, 6.0]);
-        assert_eq!(f.ones_ct_, vec![1.0, 6.0]);
-        assert_eq!(f.ones_dist_, vec![1.0 / 7.0, 6.0 / 7.0]);
-        assert_eq!(f.zero_dist_, vec![1.0 / 1.0, 0.0]);
+        assert_eq!(f.cuml_totals_ct_, vec![2.0, 8.0]);
+        assert_eq!(f.cuml_ones_ct_, vec![1.0, 7.0]);
+        assert_eq!(f.cuml_ones_dist_, vec![1.0 / 7.0, (1.0 / 7.0) + (6.0 / 7.0)]);
+        assert_eq!(f.cuml_zero_dist_, vec![1.0 / 1.0, 1.0]);
     }
 
     #[test]
@@ -365,8 +368,10 @@ mod test {
         assert_eq!(
             f.split_iv_woe(5.0, 0, f.vals_.len()),
             (
+                // (0.022314355131420965, -0.2231435513142097),
+                // (0.018232155679395495, 0.1823215567939548)
                 (0.022314355131420965, -0.2231435513142097),
-                (0.018232155679395495, 0.1823215567939548)
+                (0.018232155679395456, 0.1823215567939546)
             )
         );
 
@@ -374,8 +379,10 @@ mod test {
         assert_eq!(
             f.split_iv_woe(5.0, 1, 5),
             (
+                // (0.011157177565710483, -0.2231435513142097),
+                // (0.011157177565710483, -0.2231435513142097)
                 (0.011157177565710483, -0.2231435513142097),
-                (0.011157177565710483, -0.2231435513142097)
+                (0.011157177565710457, -0.22314355131420943)
             )
         )
     }
@@ -395,5 +402,28 @@ mod test {
             f.split_totals_ct_ones_ct(5.0, 1, 5),
             ((2.0, 1.0), (2.0, 1.0))
         )
+    }
+    #[test]
+    fn test_accumulate() {
+        let v = vec![1.0, 2.0, 3.0, 4.0];
+        let cuml_v: Vec<f64> = v
+            .iter()
+            .scan(0.0, |acc, &x| {
+                *acc = *acc + x;
+                Some(*acc)
+            })
+            .collect();
+        let mut cuml_rl_v: Vec<f64> = v
+            .iter()
+            .rev()
+            .scan(0.0, |acc, &x| {
+                *acc = *acc + x;
+                Some(*acc)
+            })
+            .collect();
+        cuml_rl_v.reverse();
+
+        assert_eq!(cuml_v, vec![1.0, 3.0, 6.0, 10.0]);
+        assert_eq!(cuml_rl_v, vec![10.0, 9.0, 7.0, 4.0]);
     }
 }
