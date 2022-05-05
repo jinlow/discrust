@@ -50,10 +50,7 @@ impl ExceptionValues {
     pub fn exception_idx(&self, v: &f64) -> Option<usize> {
         self.vals_
             .iter()
-            .position(|x| match nan_safe_compare(x, v) {
-                Ordering::Equal => true,
-                _ => false,
-            })
+            .position(|x| matches!(nan_safe_compare(x, v), Ordering::Equal))
     }
 
     // Add the values to the appropriate location in the exception
@@ -156,15 +153,10 @@ impl Feature {
 
         // Check if NaN is in the vector, but not an exception.
         // The NaN values will be at the beginning because it's sorted.
-        if x[init_idx].is_nan() {
-            match exception_values.exception_idx(&x[init_idx]) {
-                None => {
-                    return Err(DiscrustError::ContainsNaN(String::from(
-                        "x column, but NaN is not an exception value",
-                    )))
-                }
-                _ => (),
-            }
+        if x[init_idx].is_nan() && exception_values.exception_idx(&x[init_idx]) == None {
+            return Err(DiscrustError::ContainsNaN(String::from(
+                "x column, but NaN is not an exception value",
+            )));
         }
 
         // If this first value is an exception, we need to loop until
@@ -322,7 +314,7 @@ fn sum_of_cuml_subarray(x: &[f64], start: usize, stop: usize) -> f64 {
 fn cuml_array(x: &[f64]) -> Vec<f64> {
     x.iter()
         .scan(0.0, |acc, &x| {
-            *acc = *acc + x;
+            *acc += x;
             Some(*acc)
         })
         .collect()
@@ -355,7 +347,10 @@ mod test {
         assert_eq!(f.vals_, vec![1.0, 2.0]);
         assert_eq!(f.cuml_totals_ct_, vec![2.0, 8.0]);
         assert_eq!(f.cuml_ones_ct_, vec![1.0, 7.0]);
-        assert_eq!(f.cuml_ones_dist_, vec![1.0 / 7.0, (1.0 / 7.0) + (6.0 / 7.0)]);
+        assert_eq!(
+            f.cuml_ones_dist_,
+            vec![1.0 / 7.0, (1.0 / 7.0) + (6.0 / 7.0)]
+        );
         assert_eq!(f.cuml_zero_dist_, vec![1.0 / 1.0, 1.0]);
     }
 

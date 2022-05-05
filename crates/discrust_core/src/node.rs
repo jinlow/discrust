@@ -133,19 +133,14 @@ impl Node {
             // If a monotonicity of None was passed, then we will chose the
             // monotonicity of the best first split.
             let split_sign = if lhs_woe < rhs_woe { 1 } else { -1 };
-            let check_mono = match self.mono {
-                Some(v) => v,
-                None => 0,
-            };
+            let check_mono = self.mono.unwrap_or(0);
             if check_mono != 0 {
                 if check_mono == -1 {
                     if split_sign == 1 {
                         continue;
                     }
-                } else {
-                    if split_sign == -1 {
+                } else if split_sign == -1 {
                         continue;
-                    }
                 }
             }
             // Collect best
@@ -161,14 +156,13 @@ impl Node {
         if best_iv == 0.0 {
             SplitInfo::new_empty()
         } else {
-            let split_info = SplitInfo::new(
+            SplitInfo::new(
                 best_split,
                 best_lhs_iv,
                 best_lhs_woe,
                 best_rhs_iv,
                 best_rhs_woe,
-            );
-            split_info
+            )
         }
     }
 }
