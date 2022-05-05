@@ -88,7 +88,7 @@ impl Node {
 
     fn eval_values<'a>(&self, feature: &'a Feature) -> &'a [f64] {
         // We do not need to evaluate the last value, as this is not a
-        // valid value becase there are no records greater than it.
+        // valid value because there are no records greater than it.
         feature.vals_[self.start..(self.stop - 1)].as_ref()
     }
 
@@ -104,9 +104,9 @@ impl Node {
         let mut best_rhs_woe = 0.0;
         let mut best_split = -f64::INFINITY;
 
-        for v in self.eval_values(feature) {
+        for (i, v) in self.eval_values(feature).iter().enumerate() {
             let ((lhs_ct, lhs_ones), (rhs_ct, rhs_ones)) =
-                feature.split_totals_ct_ones_ct(*v, self.start, self.stop);
+                feature.split_totals_ct_ones_ct(i, self.start, self.stop);
             // Min response
             if (lhs_ones < self.min_pos) | (rhs_ones < self.min_pos) {
                 continue;
@@ -119,7 +119,7 @@ impl Node {
 
             // Get information value for split.
             let ((lhs_iv, lhs_woe), (rhs_iv, rhs_woe)) =
-                feature.split_iv_woe(*v, self.start, self.stop);
+                feature.split_iv_woe(i, self.start, self.stop);
 
             let total_iv = lhs_iv + rhs_iv;
             if total_iv < self.min_iv {
@@ -140,7 +140,7 @@ impl Node {
                         continue;
                     }
                 } else if split_sign == -1 {
-                        continue;
+                    continue;
                 }
             }
             // Collect best
