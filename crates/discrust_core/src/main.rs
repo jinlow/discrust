@@ -7,7 +7,7 @@ fn main() {
     let file =
         fs::read_to_string("resources/data.csv").expect("Something went wrong reading the file");
     for l in file.lines() {
-        let split: Vec<f64> = l.split(",").map(|x| x.parse::<f64>().unwrap()).collect();
+        let split: Vec<f64> = l.split(',').map(|x| x.parse::<f64>().unwrap()).collect();
         fare.push(split[0]);
         survived.push(split[1]);
     }

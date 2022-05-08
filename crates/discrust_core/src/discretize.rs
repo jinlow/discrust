@@ -70,7 +70,7 @@ impl Discretizer {
         let mut que = VecDeque::new();
         que.push_front(self.root_node.as_mut());
         let mut n_bins = 1;
-        while que.len() > 0 {
+        while !que.is_empty() {
             // If we are running this piece of code, the que is not empty, so
             // we can always safely unwrap.
             let mut node = que.pop_back().unwrap().unwrap();
@@ -94,7 +94,7 @@ impl Discretizer {
                 self.mono = Some(split_sign);
             }
 
-            let split_idx = feature.vals_.iter().position(|&v| v > split);
+            let idx = info.split_idx.unwrap() + node.start + 1;
 
             let lhs_node = Node::new(
                 &feature,
@@ -105,7 +105,7 @@ impl Discretizer {
                 info.lhs_woe,
                 info.lhs_iv,
                 Some(node.start),
-                split_idx,
+                Some(idx),
             );
             let rhs_node = Node::new(
                 &feature,
@@ -115,7 +115,7 @@ impl Discretizer {
                 self.mono,
                 info.rhs_woe,
                 info.rhs_iv,
-                split_idx,
+                Some(idx),
                 Some(node.stop),
             );
 
@@ -139,10 +139,7 @@ impl Discretizer {
     pub fn predict_woe(&self, x: &[f64]) -> Result<Vec<f64>, DiscrustError> {
         // First we check if this is an exception value, to do this, we need
         // to check if the value is present in the exception struct.
-        let feature = self
-            .feature
-            .as_ref()
-            .ok_or_else(|| DiscrustError::NotFitted)?;
+        let feature = self.feature.as_ref().ok_or(DiscrustError::NotFitted)?;
         let res: Vec<f64> = x
             .iter()
             .map(|v| self.predict_record_woe(v, feature))
@@ -153,10 +150,7 @@ impl Discretizer {
     pub fn predict_idx(&self, x: &[f64]) -> Result<Vec<i64>, DiscrustError> {
         // We don't need the first, value, as this will be negative infinity.
         let all_splits = &self.splits_.as_slice()[1..];
-        let feature = self
-            .feature
-            .as_ref()
-            .ok_or_else(|| DiscrustError::NotFitted)?;
+        let feature = self.feature.as_ref().ok_or(DiscrustError::NotFitted)?;
         let res: Vec<i64> = x
             .iter()
             .map(|v| self.predict_record_idx(v, all_splits, feature))
@@ -173,34 +167,27 @@ impl Discretizer {
         // If it's an exception value, we return the index negative value.
         // We start this at -1. So we add 1, to the zero indexed result
         // of the `exception_idx` function.
-        if let Some(i) = feature.exception_values.exception_idx(v) {
-            return Ok(((i + 1) as i64) * -1);
+        if let Some(i) = feature.exception_values_.exception_idx(v) {
+            return Ok(-((i + 1) as i64));
         }
         let idx = all_splits
             .iter()
             // If the value is less than, or equal to the bin edge, we are in that
             // position bin.
-            .position(|x| match nan_safe_compare(x, v) {
-                Ordering::Greater => true,
-                Ordering::Equal => true,
-                _ => false,
-            })
+            .position(|x| matches!(nan_safe_compare(x, v), Ordering::Greater | Ordering::Equal))
             .ok_or(DiscrustError::Prediction)?;
         Ok(idx as i64)
     }
     // -1, 4, 10
     fn predict_record_woe(&self, v: &f64, feature: &Feature) -> Result<f64, DiscrustError> {
-        let excp_idx = feature.exception_values.exception_idx(v);
+        let excp_idx = feature.exception_values_.exception_idx(v);
         if let Some(idx) = excp_idx {
-            if feature.exception_values.totals_ct_[idx] == 0.0 {
+            if feature.exception_values_.totals_ct_[idx] == 0.0 {
                 return Ok(0.0);
             }
-            return Ok(feature.exception_values.woe_[idx]);
+            return Ok(feature.exception_values_.woe_[idx]);
         }
-        let mut node = self
-            .root_node
-            .as_ref()
-            .ok_or_else(|| DiscrustError::NotFitted)?;
+        let mut node = self.root_node.as_ref().ok_or(DiscrustError::NotFitted)?;
         let w: f64;
         loop {
             if node.is_terminal() {
