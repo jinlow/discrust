@@ -4,6 +4,7 @@ use std::cmp::PartialEq;
 #[derive(Debug, PartialEq)]
 pub struct SplitInfo {
     pub split: Option<f64>,
+    pub split_idx: Option<usize>,
     pub lhs_iv: Option<f64>,
     pub lhs_woe: Option<f64>,
     pub rhs_iv: Option<f64>,
@@ -11,9 +12,10 @@ pub struct SplitInfo {
 }
 
 impl SplitInfo {
-    pub fn new(split: f64, lhs_iv: f64, lhs_woe: f64, rhs_iv: f64, rhs_woe: f64) -> Self {
+    pub fn new(split: f64, split_idx: usize, lhs_iv: f64, lhs_woe: f64, rhs_iv: f64, rhs_woe: f64) -> Self {
         SplitInfo {
             split: Some(split),
+            split_idx: Some(split_idx),
             lhs_iv: Some(lhs_iv),
             lhs_woe: Some(lhs_woe),
             rhs_iv: Some(rhs_iv),
@@ -23,6 +25,7 @@ impl SplitInfo {
     pub fn new_empty() -> Self {
         SplitInfo {
             split: None,
+            split_idx: None,
             lhs_iv: None,
             lhs_woe: None,
             rhs_iv: None,
@@ -103,6 +106,7 @@ impl Node {
         let mut best_rhs_iv = 0.0;
         let mut best_rhs_woe = 0.0;
         let mut best_split = -f64::INFINITY;
+        let mut best_split_idx = 0;
 
         for (i, v) in self.eval_values(feature).iter().enumerate() {
             let ((lhs_ct, lhs_ones), (rhs_ct, rhs_ones)) =
@@ -147,6 +151,7 @@ impl Node {
             if total_iv > best_iv {
                 best_iv = total_iv;
                 best_split = *v;
+                best_split_idx = i;
                 best_lhs_iv = lhs_iv;
                 best_lhs_woe = lhs_woe;
                 best_rhs_iv = rhs_iv;
@@ -158,6 +163,7 @@ impl Node {
         } else {
             SplitInfo::new(
                 best_split,
+                best_split_idx,
                 best_lhs_iv,
                 best_lhs_woe,
                 best_rhs_iv,
@@ -190,6 +196,7 @@ mod test {
         );
         let comp_info = SplitInfo::new(
             6.2375,
+            3,
             0.22001303079783097,
             -0.6286086594223742,
             0.3064140580738649,
@@ -220,7 +227,7 @@ mod test {
             None,
             None,
         );
-        println!("{:?}", f.exception_values);
+        println!("{:?}", f.exception_values_);
         assert_eq!(n.find_best_split(&f).split.unwrap(), 6.2375);
 
         let f = Feature::new(&x_, &y_, &w_, &Vec::new()).unwrap();
@@ -235,7 +242,7 @@ mod test {
             None,
             None,
         );
-        println!("{:?}", f.exception_values);
+        println!("{:?}", f.exception_values_);
         assert_ne!(n.find_best_split(&f).split.unwrap(), 6.2375);
     }
 
@@ -266,10 +273,11 @@ mod test {
         println!("{:?}", n.find_best_split(&f));
         let test_info = SplitInfo {
             split: Some(6.4375),
+            split_idx: Some(0),
             lhs_iv: Some(f64::INFINITY),
             lhs_woe: Some(-f64::INFINITY),
-            rhs_iv: Some(0.08392941911181283),
-            rhs_woe: Some(-1.0168034503546095),
+            rhs_iv: Some(0.08392941911181269),
+            rhs_woe: Some(-1.0168034503546088),
         };
         assert_eq!(n.find_best_split(&f), test_info);
     }

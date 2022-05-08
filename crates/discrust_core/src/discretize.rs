@@ -1,7 +1,7 @@
 use crate::errors::DiscrustError;
 use crate::feature::Feature;
 use crate::node::{Node, NodePtr};
-use crate::utils::{first_greater_than, nan_safe_compare};
+use crate::utils::nan_safe_compare;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 
@@ -94,7 +94,7 @@ impl Discretizer {
                 self.mono = Some(split_sign);
             }
 
-            let split_idx = first_greater_than(&feature.vals_, &split);
+            let idx = info.split_idx.unwrap() + node.start + 1;
 
             let lhs_node = Node::new(
                 &feature,
@@ -105,7 +105,7 @@ impl Discretizer {
                 info.lhs_woe,
                 info.lhs_iv,
                 Some(node.start),
-                Some(split_idx),
+                Some(idx),
             );
             let rhs_node = Node::new(
                 &feature,
@@ -115,7 +115,7 @@ impl Discretizer {
                 self.mono,
                 info.rhs_woe,
                 info.rhs_iv,
-                Some(split_idx),
+                Some(idx),
                 Some(node.stop),
             );
 
@@ -167,7 +167,7 @@ impl Discretizer {
         // If it's an exception value, we return the index negative value.
         // We start this at -1. So we add 1, to the zero indexed result
         // of the `exception_idx` function.
-        if let Some(i) = feature.exception_values.exception_idx(v) {
+        if let Some(i) = feature.exception_values_.exception_idx(v) {
             return Ok(-((i + 1) as i64));
         }
         let idx = all_splits
@@ -180,17 +180,14 @@ impl Discretizer {
     }
     // -1, 4, 10
     fn predict_record_woe(&self, v: &f64, feature: &Feature) -> Result<f64, DiscrustError> {
-        let excp_idx = feature.exception_values.exception_idx(v);
+        let excp_idx = feature.exception_values_.exception_idx(v);
         if let Some(idx) = excp_idx {
-            if feature.exception_values.totals_ct_[idx] == 0.0 {
+            if feature.exception_values_.totals_ct_[idx] == 0.0 {
                 return Ok(0.0);
             }
-            return Ok(feature.exception_values.woe_[idx]);
+            return Ok(feature.exception_values_.woe_[idx]);
         }
-        let mut node = self
-            .root_node
-            .as_ref()
-            .ok_or(DiscrustError::NotFitted)?;
+        let mut node = self.root_node.as_ref().ok_or(DiscrustError::NotFitted)?;
         let w: f64;
         loop {
             if node.is_terminal() {

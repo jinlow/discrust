@@ -12,10 +12,11 @@ use std::{cmp::Ordering, collections::HashMap};
 pub struct Feature {
     pub vals_: Vec<f64>,
     cuml_ones_ct_: Vec<f64>,
+    cuml_zero_ct_: Vec<f64>,
     cuml_totals_ct_: Vec<f64>,
-    cuml_ones_dist_: Vec<f64>,
-    cuml_zero_dist_: Vec<f64>,
-    pub exception_values: ExceptionValues,
+    total_ones_: f64,
+    total_zero_: f64,
+    pub exception_values_: ExceptionValues,
 }
 
 #[derive(Debug)]
@@ -105,151 +106,118 @@ impl Feature {
         exception_values: &[f64],
     ) -> Result<Self, DiscrustError> {
         // Make exception values.
-        let mut exception_values = ExceptionValues::new(exception_values);
+        let mut exception_values_ = ExceptionValues::new(exception_values);
 
         // Define all of the stats we will use
         let mut vals_ = Vec::new();
-        let mut ones_ct_ = Vec::new();
-        let mut totals_ct_ = Vec::new();
-        let mut ones_dist_ = Vec::new();
-        let mut zero_dist_ = Vec::new();
+        let mut cuml_ones_ct_ = Vec::new();
+        let mut cuml_zero_ct_ = Vec::new();
+        let mut cuml_totals_ct_ = Vec::new();
         // First we will get the index needed to sort the vector x.
         let mut sort_tuples: Vec<(usize, &f64)> = x.iter().enumerate().collect();
-        // Now sort these tuples by the float values of x.
-        sort_tuples.sort_by(|a, b| nan_safe_compare(a.1, b.1));
-        // Now that we have the tuples sorted, we only need the index, we will loop over
-        // the data again here, to retrieve the sort index.
-        // Maybe if we need to speed things up again, we can consider skipping this part and
-        // and only use the the tuples? Here we just set it to the iterator, so it's
-        // not actually consumed.
-        let mut sort_index = sort_tuples.iter().map(|(i, _)| *i);
+        let no_exceptions = exception_values.is_empty();
+        if no_exceptions {
+            // Now sort these tuples by the float values of x.
+            sort_tuples.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap());
+        } else {
+            sort_tuples.sort_by(|a, b| nan_safe_compare(a.1, b.1));
+            
+        };
+        let sort_index = sort_tuples.iter().map(|(i, _)| *i);
 
-        // Now loop over all columns, collecting aggregate statistics.
-        let mut zero_ct: Vec<f64> = Vec::new();
-
-        // Do this part in one pass for both.
-        let mut total_ones = 0.0;
-        let mut total_zero = 0.0;
-        for (w_, y_) in w.iter().zip(y) {
-            // Confirm there are no NaN values in the y_ variable, or
-            // or the weight field.
+        let mut totals_idx = 0;
+        let mut first_value = true;
+        let mut x_ = f64::NAN;
+        let mut y_;
+        let mut w_;
+        let mut total_ones_ = 0.0;
+        let mut total_zero_ = 0.0;
+        for i in sort_index {
+            y_ = y[i];
+            w_ = w[i];
+            // Some error checking
             if y_.is_nan() {
                 return Err(DiscrustError::ContainsNaN(String::from("y column")));
             }
             if w_.is_nan() {
                 return Err(DiscrustError::ContainsNaN(String::from("weight column")));
             }
-
-            total_ones += w_ * y_;
-            // I am using greater than 0 here, because
-            // floats only have partial equality.
-            total_zero += w_ * ((y_ < &1.0) as i64 as f64);
-        }
-
-        // Now loop over the data collecting all relevant stats.
-        // We grab the first item from the iterator, and start the sums
-        // of all relevant fields.
-        let mut init_idx = sort_index.next().unwrap_or(0);
-
-        // Check if NaN is in the vector, but not an exception.
-        // The NaN values will be at the beginning because it's sorted.
-        if x[init_idx].is_nan() && exception_values.exception_idx(&x[init_idx]) == None {
-            return Err(DiscrustError::ContainsNaN(String::from(
-                "x column, but NaN is not an exception value",
-            )));
-        }
-
-        // If this first value is an exception, we need to loop until
-        // we find a non-exception value. Or consume the data. In which
-        // case all values in the data are exception_values.
-        // If the first value is not an exception, we just leave the
-        // init index alone.
-        if let Some(idx) = exception_values.exception_idx(&x[init_idx]) {
-            exception_values.update_exception_values(idx, &w[init_idx], &y[init_idx]);
-            // Start searching through the vector to find the first non-exception
-            // value.
-            loop {
-                let i_op = sort_index.next();
-                if i_op.is_none() {
-                    break;
+            if !no_exceptions {
+                let e_idx = exception_values_.exception_idx(&x[i]);
+                if x[i].is_nan() && e_idx == None {
+                    return Err(DiscrustError::ContainsNaN(String::from(
+                        "x column, but NaN is not an exception value",
+                    )));
                 }
-                let i = i_op.unwrap();
-                match exception_values.exception_idx(&x[i]) {
-                    Some(idx) => {
-                        exception_values.update_exception_values(idx, &w[i], &y[i]);
+                // If the value is equal to one of our exception_values_ update the exception_values_
+                // and continue.
+                if let Some(idx) = e_idx {
+                    exception_values_.update_exception_values(idx, &w_, &y_);
+                    if y_ == 1.0 {
+                        total_ones_ += w_;
+                    } else {
+                        total_zero_ += w_;
                     }
-                    // If we have reached a point in the loop where the value
-                    // is no longer an exception, update the init_idx
-                    // and then break out of the loop.
-                    None => {
-                        init_idx = i;
-                        break;
-                    }
-                };
+                    continue;
+                }
             }
-        };
-
-        // TODO: At this point we run the risk of actually having gone through
-        // all the values. Because of this, we need to add some check here
-        // incase we have totally consumed sort_index.
-        let mut x_ = x[init_idx];
-        vals_.push(x_);
-        totals_ct_.push(w[init_idx]);
-        ones_ct_.push(w[init_idx] * y[init_idx]);
-        zero_ct.push(w[init_idx] * ((y[init_idx] < 1.0) as i64 as f64));
-        let mut totals_idx = 0;
-
-        // This will start at the second element.
-        for i in sort_index {
-            // If the value is equal to one of our exception_values update the exception_values
-            // and continue.
-            if let Some(idx) = exception_values.exception_idx(&x[i]) {
-                exception_values.update_exception_values(idx, &w[i], &y[i]);
-                continue;
-            }
-
-            // if the value is greater than x_ we know we are at a new
-            // value and can calculate the distributions, as well as increment
-            // the totals_idx.
-            if x_ < x[i] {
-                // We update x_ to the new value.
+            // If this is the first value, add to our vectors
+            // Initializing them.
+            if first_value {
                 x_ = x[i];
-                // We calculate the distribution values
-                ones_dist_.push(ones_ct_[totals_idx] / total_ones);
-                zero_dist_.push(zero_ct[totals_idx] / total_zero);
-
-                // Update the values
-                totals_ct_.push(w[i]);
-                ones_ct_.push(w[i] * y[i]);
-                zero_ct.push(w[i] * ((y[i] < 1.0) as i64 as f64));
+                cuml_totals_ct_.push(w_);
+                if y_ == 1.0 {
+                    total_ones_ += w_;
+                    cuml_ones_ct_.push(w_);
+                    cuml_zero_ct_.push(0.0);
+                } else {
+                    total_zero_ += w_;
+                    cuml_ones_ct_.push(0.0);
+                    cuml_zero_ct_.push(w_);
+                }
+                vals_.push(x_);
+            // If this is a new value, push, and cumulate
+            // this won't panic, because we know these
+            // vectors have values
+            } else if x_ < x[i] {
+                let t_last = cuml_totals_ct_[totals_idx];
+                let o_last = cuml_ones_ct_[totals_idx];
+                let z_last = cuml_zero_ct_[totals_idx];
+                x_ = x[i];
+                cuml_totals_ct_.push(w_ + t_last);
+                if y_ == 1.0 {
+                    total_ones_ += w_;
+                    cuml_ones_ct_.push(w_ + o_last);
+                    cuml_zero_ct_.push(z_last);
+                } else {
+                    total_zero_ += w_;
+                    cuml_ones_ct_.push(o_last);
+                    cuml_zero_ct_.push(w_ + z_last);
+                }
                 vals_.push(x_);
                 totals_idx += 1;
             } else {
-                // Otherwise just add this value to our current aggregations
-                totals_ct_[totals_idx] += w[i];
-                ones_ct_[totals_idx] += w[i] * y[i];
-                zero_ct[totals_idx] += w[i] * ((y[i] < 1.0) as i64 as f64);
+                cuml_totals_ct_[totals_idx] += w_;
+                if y_ == 1.0 {
+                    total_ones_ += w_;
+                    cuml_ones_ct_[totals_idx] += w_;
+                } else {
+                    total_zero_ += w_;
+                    cuml_zero_ct_[totals_idx] += w_;
+                }
             }
+            first_value = false;
         }
-        // Finally add the very last value to our distribution columns
-        ones_dist_.push(ones_ct_[totals_idx] / total_ones);
-        zero_dist_.push(zero_ct[totals_idx] / total_zero);
-
-        exception_values.calculate_iv_woe(total_ones, total_zero);
-
-        // Generate cumulative sums left to right.
-        let cuml_ones_ct_: Vec<f64> = cuml_array(&ones_ct_);
-        let cuml_totals_ct_: Vec<f64> = cuml_array(&totals_ct_);
-        let cuml_ones_dist_: Vec<f64> = cuml_array(&ones_dist_);
-        let cuml_zero_dist_: Vec<f64> = cuml_array(&zero_dist_);
+        exception_values_.calculate_iv_woe(total_ones_, total_zero_);
 
         Ok(Feature {
             vals_,
             cuml_ones_ct_,
+            cuml_zero_ct_,
             cuml_totals_ct_,
-            cuml_ones_dist_,
-            cuml_zero_dist_,
-            exception_values,
+            total_ones_,
+            total_zero_,
+            exception_values_,
         })
     }
 
@@ -271,14 +239,18 @@ impl Feature {
         let split_idx = split_idx + 1 + start;
 
         // Accumulate the left hand side.
-        let lhs_zero_dist = sum_of_cuml_subarray(&self.cuml_zero_dist_, start, split_idx - 1);
-        let lhs_ones_dist = sum_of_cuml_subarray(&self.cuml_ones_dist_, start, split_idx - 1);
+        let lhs_zero_dist =
+            sum_of_cuml_subarray(&self.cuml_zero_ct_, start, split_idx - 1) / self.total_zero_;
+        let lhs_ones_dist =
+            sum_of_cuml_subarray(&self.cuml_ones_ct_, start, split_idx - 1) / self.total_ones_;
         let lhs_woe = (lhs_ones_dist / lhs_zero_dist).ln();
         let lhs_iv = (lhs_ones_dist - lhs_zero_dist) * lhs_woe;
 
         // Accumulate the right hand side.
-        let rhs_zero_dist = sum_of_cuml_subarray(&self.cuml_zero_dist_, split_idx, stop - 1);
-        let rhs_ones_dist = sum_of_cuml_subarray(&self.cuml_ones_dist_, split_idx, stop - 1);
+        let rhs_zero_dist =
+            sum_of_cuml_subarray(&self.cuml_zero_ct_, split_idx, stop - 1) / self.total_zero_;
+        let rhs_ones_dist =
+            sum_of_cuml_subarray(&self.cuml_ones_ct_, split_idx, stop - 1) / self.total_ones_;
         let rhs_woe = (rhs_ones_dist / rhs_zero_dist).ln();
         let rhs_iv = (rhs_ones_dist - rhs_zero_dist) * rhs_woe;
 
@@ -311,15 +283,6 @@ fn sum_of_cuml_subarray(x: &[f64], start: usize, stop: usize) -> f64 {
     }
 }
 
-fn cuml_array(x: &[f64]) -> Vec<f64> {
-    x.iter()
-        .scan(0.0, |acc, &x| {
-            *acc += x;
-            Some(*acc)
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -347,11 +310,11 @@ mod test {
         assert_eq!(f.vals_, vec![1.0, 2.0]);
         assert_eq!(f.cuml_totals_ct_, vec![2.0, 8.0]);
         assert_eq!(f.cuml_ones_ct_, vec![1.0, 7.0]);
-        assert_eq!(
-            f.cuml_ones_dist_,
-            vec![1.0 / 7.0, (1.0 / 7.0) + (6.0 / 7.0)]
-        );
-        assert_eq!(f.cuml_zero_dist_, vec![1.0 / 1.0, 1.0]);
+        // assert_eq!(
+        //     f.cuml_ones_dist_,
+        //     vec![1.0 / 7.0, (1.0 / 7.0) + (6.0 / 7.0)]
+        // );
+        // assert_eq!(f.cuml_zero_dist_, vec![1.0 / 1.0, 1.0]);
     }
 
     #[test]
@@ -378,7 +341,7 @@ mod test {
                 // (0.011157177565710483, -0.2231435513142097),
                 // (0.011157177565710483, -0.2231435513142097)
                 (0.011157177565710483, -0.2231435513142097),
-                (0.011157177565710457, -0.22314355131420943)
+                (0.011157177565710483, -0.2231435513142097)
             )
         )
     }

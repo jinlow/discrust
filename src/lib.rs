@@ -46,7 +46,7 @@ impl Discretizer {
             .feature
             .as_ref()
             .unwrap()
-            .exception_values
+            .exception_values_
             .to_hashmap())
     }
 
