@@ -150,7 +150,7 @@ ds.exception_values_["totals_ct_"]
 
 ### From PyPi
 
-For Windows users, the package can be installed directly from pypi with the following command.
+The package can be installed directly from pypi with the following command.
 
 ```shell
 python -m pip install discrust
